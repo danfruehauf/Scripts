@@ -1,0 +1,14 @@
+shk - Simple Hardening Kit
+shk is intended to be used in order to easily secure and harden your system.
+In the plugins/ directory you'll find plugins you can easily add in order to
+further customize shk.
+
+shk should work on most Debian and most Redhats, although I must admit that
+some of the debian capabilities I didn't fully checked.
+
+Invokation can be done by:
+ # ./shk.sh
+Invoking a single plugin:
+ # ./shk.sh plugins/firewall.sh
+
+Please edit config.sh before invoking anything and edit it accordingly.
