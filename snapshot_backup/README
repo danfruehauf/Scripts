@@ -1,7 +1,7 @@
 snapshot_backup.sh is a Bash implementation for a snapshot backup.
 
 Before starting, copy config_sample.sh to config/my_backup.sh and edit it:
-# cp config_sample.sh config/my_backup.sh
+# mkdir config && cp config_sample.sh config/my_backup.sh
 # vim config/my_backup.sh
 The parameters there are fairly straight forward.
 
