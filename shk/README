@@ -6,7 +6,7 @@ further customize shk.
 shk should work on most Debian and most Redhats, although I must admit that
 some of the debian capabilities I didn't fully checked.
 
-Invokation can be done by:
+Invocation can be done by:
  # ./shk.sh
 Invoking a single plugin:
  # ./shk.sh plugins/firewall.sh

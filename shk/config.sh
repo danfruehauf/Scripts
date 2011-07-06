@@ -6,7 +6,7 @@
 #############################
 declare -A FIREWALL_RULES
 # 0.0.0.0/0 denotes ALL - use this to specify open ports from ALL
-# This will be a default, allow SSH from anywherem - I don't want you to
+# This will be a default, allow SSH from anywhere - I don't want you to
 # lock yourself out of the machine...
 FIREWALL_RULES["0.0.0.0/0"]="ssh:tcp"
 # This will allow ports 62:udp and http:tcp from 1.1.1.1

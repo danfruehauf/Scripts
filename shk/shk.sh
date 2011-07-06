@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# shk.sh - Simple Hardening Kit
+# Written by Dan Fruehauf <malkodan@gmail.com>
+
 # smart_add_line_to_file adds $replacement to file, and if $pattern exists
 # it'll replace the whole line with $replacement
 # $1 - file
