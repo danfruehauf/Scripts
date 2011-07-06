@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# snapshot_backup.sh - a Bash implementation for a snapshot backup
+# Written by Dan Fruehauf <malkodan@gmail.com>
+
 # prefix for backup dirs
 declare -r SNAPSHOT_DIR_PREFIX=daily
 

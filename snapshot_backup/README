@@ -1,0 +1,27 @@
+snapshot_backup.sh is a Bash implementation for a snapshot backup.
+
+Before starting, copy config_sample.sh to config/my_backup.sh and edit it:
+# cp config_sample.sh config/my_backup.sh
+# vim config/my_backup.sh
+The parameters there are fairly straight forward.
+
+How does it work?
+ - On the first run, snapshot_backup.sh will simply rsync your source
+   directory to the destination directory, creating daily.1.
+ - On the second run, snapshot_backup.sh will:
+   - Rename daily.1 into daily.2
+   - Hardlink daily.2 into daily.1
+   - Run rsync to synchronize your current source directory with daily.1
+     replacing only files that have changed
+ - Third run and on would look like the second run, rotating the directories
+   from daily.x into daily.x+1 and an rsync from the source directory to the
+   destination directory.
+ - If you had SNAPSHOT_NR set into 7, and have daily.7 in your backup
+   destination directory, then the following would happen:
+   - Rename daily.7 into something temporary, call it "giraffe"
+   - Rename daily.x into daily.x+1
+   - Rename "giraffe" into daily.1
+   - Synchronize with rsync daily.1
+   That way we never have the tedious task of removing a backup directory - a
+   task that can take quite long...
+   What we actually do here is 'recycle' the last backup.
