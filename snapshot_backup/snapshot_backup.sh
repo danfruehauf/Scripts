@@ -1,10 +1,7 @@
 #!/bin/bash
 
-declare -r BACKUP_DIR=/portable
-declare -r SRC_DIR=/home
+# prefix for backup dirs
 declare -r SNAPSHOT_DIR_PREFIX=daily
-declare -i -r SNAPSHOTS_NR=7
-declare -r EXCLUDES=/home/backup-exclude
 
 RSYNC_OPTIONS="-va --delete --delete-excluded"
 
@@ -28,18 +25,18 @@ rotate() {
 		return 1
 	fi
 
-	local -i total_snapshots=`ls -d1t $backup_dir/$snapshot_prefix.* | wc -l`
-	local oldest_snapshot=`ls -d1t $backup_dir/$snapshot_prefix.* | tail -1` # usually a directory named 6 or 7
+	local -i total_snapshots=`ls -d1t $backup_dir/$snapshot_prefix.* 2> /dev/null | wc -l`
+	local oldest_snapshot=`ls -d1t $backup_dir/$snapshot_prefix.* 2> /dev/null | tail -1` # usually a directory named 6 or 7
 	let snapshots_to_remove_nr=$total_snapshots-$max_snapshots_nr+1
 	if [ $snapshots_to_remove_nr -gt 1 ]; then
 		# more than 1 snapshot to remove, eck...
 		echo "I have $snapshots_to_remove_nr snapshots to remove"
-		local snapshots_to_remove=`ls -d1t $backup_dir/$snapshot_prefix.* | tail -$snapshots_to_remove_nr | xargs`
+		local snapshots_to_remove=`ls -d1t $backup_dir/$snapshot_prefix.* 2> /dev/null | tail -$snapshots_to_remove_nr | xargs`
 		for snapshot_to_remove in $snapshots_to_remove; do
 			echo "Removing snapshot : $snapshot_to_remove"
 			rm -rf --preserve-root $snapshot_to_remove
 		done
-		oldest_snapshot=`ls -d1t $backup_dir/$snapshot_prefix.* | tail -1`
+		oldest_snapshot=`ls -d1t $backup_dir/$snapshot_prefix.* 2> /dev/null | tail -1`
 	fi
 
 	local -i oldest_snapshot_nr=`get_snapshot_number $oldest_snapshot`
@@ -47,7 +44,7 @@ rotate() {
 	let next_snapshot_nr=$oldest_snapshot_nr+1
 
 	next_snapshot=$backup_dir/$snapshot_prefix.$next_snapshot_nr
-	for snapshot in `ls -d1tr $backup_dir/$snapshot_prefix.*`; do
+	for snapshot in `ls -d1tr $backup_dir/$snapshot_prefix.* 2> /dev/null`; do
 		local -i snapshot_src_nr=`get_snapshot_number $snapshot`
 		if [ $snapshot_src_nr -eq 1 ] && [ $snapshot -ef $next_snapshot ]; then
 			# we're done (this directory had just one backup)
@@ -88,40 +85,46 @@ make_snapshot() {
 
 	echo "Backing up '$src_dir' to '$dest_dir'"
 
-	rsync $RSYNC_OPTIONS --exclude-from="$EXCLUDES" \
-		$src_dir $dest_dir
+	if [ x"$EXCLUDES" != x ] && [ -r $EXCLUDES ]; then
+		rsync $RSYNC_OPTIONS --exclude-from="$EXCLUDES" \
+			$src_dir $dest_dir
+	else
+		rsync $RSYNC_OPTIONS \
+			$src_dir $dest_dir
+	fi
 
-	#rsync $RSYNC_OPTIONS \
-	#	$src_dir $dest_dir
-
-	# touch last back to really reflect time of backup
+	# touch last backup to really reflect time of backup
 	touch $dest_dir
 }
 
-# mounts volume in read/write mode
-mount_rw() {
-	mount_wrapper rw $1
+# validates a configuration file for backup
+# $1 - configuration file to validate
+validate_config_file() {
+	local config_file=$1; shift
+	(source $config_file && \
+		test -d $SRC_DIR && test -d $DEST_DIR && [ -n "${SNAPSHOTS_NR:+x}" ])
 }
 
-# mounts volume in read only mode
-mount_ro() {
-	mount_wrapper ro $1
+# invokes a backup with a configuration file
+# $1 - configuration file
+invoke_backup() {
+	local config_file=$1; shift
+	(source $config_file && 
+		rotate $DEST_DIR $SNAPSHOT_DIR_PREFIX $SNAPSHOTS_NR && \
+		make_snapshot $SRC_DIR $DEST_DIR/$SNAPSHOT_DIR_PREFIX.1)
 }
 
-mount_wrapper() {
-	mount -o remount,$1 $2
-}
-
+# $1 - from where to backup
+# $2 - where to backup to
 main() {
-	umount $BACKUP_DIR
-	if ! mount $BACKUP_DIR; then
-		echo "Could not mount '$BACKUP_DIR'" 1>&2
-		exit 1
-	fi
-	mount_rw $BACKUP_DIR && \
-	rotate $BACKUP_DIR $SNAPSHOT_DIR_PREFIX $SNAPSHOTS_NR && \
-	make_snapshot $SRC_DIR $BACKUP_DIR/$SNAPSHOT_DIR_PREFIX.1 && \
-	mount_ro $BACKUP_DIR
+	local -i retval=0
+	local config_file
+	for config_file in `dirname $0`/config/*; do
+		validate_config_file $config_file && invoke_backup $config_file || \
+			echo "Failed loading configuration '$config_file'" 1>&2
+		let retval=$retval+$?
+	done
+	return $retval
 }
 
-main $*
+main "$@"
