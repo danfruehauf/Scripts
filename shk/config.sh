@@ -94,6 +94,8 @@ exit 1
 declare -A SSH_PARAMETERS
 # Allow only the root user
 #SSH_PARAMETERS["AllowUsers"]="root"
+# Permig root login, if we are going to allow only root
+#SSH_PARAMETERS["PermitRootLogin"]="yes"
 # Move SSH to a different port
 #SSH_PARAMETERS["Port"]="2817"
 exit 1
