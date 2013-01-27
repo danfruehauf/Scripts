@@ -1,6 +1,6 @@
 ## Bash Scripting Conventions
 Scripting conventions are needed, especially with Bash, as things can get rather wild if not.
-follow them, they try to avoid havoc and chaos.
+Follow them, they try to avoid havoc and chaos.
 ### General
  * Include a #!/bin/bash header as the first line of your file.
 <pre><code>#!/bin/bash
@@ -9,18 +9,19 @@ follow them, they try to avoid havoc and chaos.
 <pre><code># Written by Dan Fruehauf <malkodan@gmail.com>
 </code></pre>
  * Indent everything with tabs and not with spaces!
+   * And if you are indenting with space, be consistent with it!
  * In case a script was misused, create a usage() function and have it's output go to stderr instead of stdout. This can be achieved by:
-<pre><code>usage() {
-    echo "Usage: "`basename $0`" parameters" 1>&2
-    exit 2
-}
+<pre><code>	usage() {
+		echo "Usage: "`basename $0`" parameters" 1>&2
+		exit 2
+	}
 </code></pre>
  * If using for any reason in your script *rm -rf $VARIABLE*, make sure $VARIABLE is not empty, and not '/':
 <pre><code>if [ x"$VARIABLE" != x ] && [ "$VARIABLE" != "/" ]; then
-    rm -rf $VARIABLE
+	rm -rf $VARIABLE
 else
-    echo "Critical: tried to delete '$VARIABLE'" 1>&2
-    exit 1
+	echo "Critical: tried to delete '$VARIABLE'" 1>&2
+	exit 1
 fi
 </code></pre>
  * In case there is a use for a temporary file, use *mktemp* to generate it and make sure to remove it:
@@ -53,12 +54,12 @@ local -i number_of_people_in_the_room=4
  * Create functions with clear names and specific objectives. Avoid bloated functions.
  * Function names will be in lowercase letters and underscores will separate the words, e.g.:
 <pre><code>make_home_directory_for_user() {
-    ...
+	...
 }
 </code></pre>
  * Every script should have a main() function in it's end, followed by a call to it:
 <pre><code>main() {
-    save_the_world
+	save_the_world
 }
 
 main "$@"
@@ -69,28 +70,28 @@ main "$@"
 # $2 - user's home directory
 # "$@" - files to copy
 copy_files_to_user_homedir() {
-    local username=$1; shift
-    local user_homedir=$1; shift
-    for file in "$@"; do
-        cp -a $file $user_homedir
-        chown $username $user_homedir/`basename $file`
-    done
+	local username=$1; shift
+	local user_homedir=$1; shift
+	for file in "$@"; do
+		cp -a $file $user_homedir
+		chown $username $user_homedir/`basename $file`
+	done
 }
 </code></pre>
  * Return values from functions are 0 for success or anything else for failure:
 <pre><code># this function bakes a cake
 # $1 - temperature
 bake_cake() {
-    local -i temperature=$1; shift
-    local -i retval=0
-    if [ $temperature -gt 400 ]; then
-        echo "Cake has burnt!"
-        retval=255
-    else
-        echo "Cake is alright"
-        retval=0
-    fi
-    return $retval
+	local -i temperature=$1; shift
+	local -i retval=0
+	if [ $temperature -gt 400 ]; then
+		echo "Cake has burnt!"
+		retval=255
+	else
+		echo "Cake is alright"
+		retval=0
+	fi
+	return $retval
 }
 </code></pre>
  * Use a standard variable ($retval) to calculate the return value
@@ -98,15 +99,15 @@ bake_cake() {
 <pre><code># this function does a few things
 # "$@" - things to do
 do_a_few_things() {
-    local -i retval=0
-    local thing
-    for thing in "$@"; do
-        echo -n "Doing '$thing'..."
-        $thing
-        let retval=$retval+$?
-        echo "Done!"
-    done
-    return $retval
+	local -i retval=0
+	local thing
+	for thing in "$@"; do
+		echo -n "Doing '$thing'..."
+		$thing
+		let retval=$retval+$?
+		echo "Done!"
+	done
+	return $retval
 }
 </code></pre>
  * When sourcing another bash file, never use '.', but the *source* keyword, that makes things easier when auditing code and grepping for external files:
