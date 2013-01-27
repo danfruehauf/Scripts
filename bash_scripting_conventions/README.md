@@ -29,7 +29,13 @@ Follow them, they try to avoid havoc and chaos.
 <<< operations with $temp_filename >>>
 rm -f $temp_filename
 </code></pre>
-In case there's required user intervention, you MAY create a neat dialog using dialog, DON'T BE LAZY if you want people to use your scripts.
+ * In case there's required user intervention, you MAY create a neat dialog using dialog, DON'T BE LAZY if you want people to use your scripts:
+<pre><code>if dialog --yesno "Are you sure you want to wipe out your whole hard drive?" 0 0; then
+		echo "OMG, FAIL."; exit 2
+else
+		echo "Good choice mate."
+fi
+</code></pre>
 
 ### Variables
  * Avoid global variable as much as you can, although usually common in bash scripts try to avoid them.
