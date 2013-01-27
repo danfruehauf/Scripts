@@ -18,7 +18,7 @@ Follow them, they try to avoid havoc and chaos.
 </code></pre>
  * If using for any reason in your script *rm -rf $VARIABLE*, make sure $VARIABLE is not empty, and not '/':
 <pre><code>if [ x"$VARIABLE" != x ] && [ "$VARIABLE" != "/" ]; then
-		rm -rf $VARIABLE
+		rm -rf --preserve-root $VARIABLE
 	else
 		echo "Critical: tried to delete '$VARIABLE'" 1>&2
 		exit 1
