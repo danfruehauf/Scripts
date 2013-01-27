@@ -54,7 +54,7 @@ local -i number_of_people_in_the_room=4
  * Create functions with clear names and specific objectives. Avoid bloated functions.
  * Function names will be in lowercase letters and underscores will separate the words, e.g.:
 <pre><code>make_home_directory_for_user() {
-	...
+		...
 }
 </code></pre>
  * Every script should have a main() function in it's end, followed by a call to it:
