@@ -1,0 +1,191 @@
+#!/bin/bash
+
+# Written by Dan Fruehauf <malkodan@gmail.com>
+# Big thanks to Lacoon Security for allowing this to GPL
+
+# test in front of google.com
+declare -r DEFAULT_TEST_URL=http://www.google.com
+
+# global error string to report errors
+ERROR_STRING=""
+
+# returns a free vpn device
+# $1 - device prefix (tun/tap)
+allocate_vpn_device() {
+	local device_prefix=$1; shift
+	local i
+	for i in `seq 0 255`; do
+		! ifconfig ${device_prefix}$i >& /dev/null && \
+			echo "${device_prefix}$i" && \
+			return 0
+	done
+	return 1
+}
+
+################################
+# CORE check_vpn FUNCTIONALITY #
+################################
+
+# return true if vpn is up, false if it hadn't
+# $1 - type
+# $2 - lns
+# $3 - vpn device
+wait_for_vpn_to_come_up() {
+	local type=$1; shift
+	local lns=$1; shift
+	local vpn_device=$1; shift
+	for i in `seq 1 30`; do
+		sleep 1
+		if _${type}_is_vpn_up $lns $vpn_device; then
+			return 0
+		fi
+	done
+	return 1
+}
+
+# return true if vpn is down, false if it hadn't
+# $1 - type
+# $2 - lns
+# $3 - vpn device
+wait_for_vpn_to_come_down() {
+	local type=$1; shift
+	local lns=$1; shift
+	local vpn_device=$1; shift
+	for i in `seq 1 30`; do
+		sleep 1
+		if ! _${type}_is_vpn_up $lns $vpn_device; then
+			return 0
+		fi
+	done
+	return 1
+}
+
+# checks if a port is open
+# $1 - host
+# $2 - port
+check_open_port() {
+	local host=$1; shift
+	local -i port=$1; shift
+	nmap -Pn -sS -p$port $host | grep -q "^$port/tcp open"
+}
+
+# returns routing table number for device
+# $1 - device
+get_routing_table_for_device() {
+	# TODO we assume device is tunXX
+	local -i device_nr=${device:3}
+	local -i table_nr=$device_nr+31000
+	echo $table_nr
+}
+
+# add/remove source based routing for given device
+# $1 - device
+# $2 - action (up/down)
+source_based_routing() {
+	local device=$1; shift
+	local action=$1; shift
+
+	# extract table number, local and remote addressess
+	local -i table_nr=`get_routing_table_for_device $device`
+	local interface_remote_address=`ip addr show $device | grep inet | cut -d' ' -f8 | cut -d/ -f1`
+	local interface_local_address=`ip addr show $device | grep inet | cut -d' ' -f6`
+
+	# act on action
+	if [ "$action" = "up" ]; then
+		route add $interface_remote_address dev $device >& /dev/null
+		ip rule add from $interface_local_address table $table_nr >& /dev/null
+		ip route add default dev $device table $table_nr
+	elif [ "$action" = "down" ]; then
+		ip rule delete from $interface_local_address table $table_nr >& /dev/null
+		ip route delete table $routing_table_number >& /dev/null
+	else
+		ERROR_STRING="source_based_routing: action required" && return 2
+	fi
+}
+
+# run connectivity check
+# $1 - device
+# $2 - test url
+vpn_connectivity_check() {
+	local device=$1; shift
+	local test_url=$1; shift
+	# add source based routing for device
+	source_based_routing $device up
+
+	# perform test
+	curl --interface $device --connect-timeout 10 --speed-time 5 -s -o /dev/null $test_url
+	local -i retval=$?
+
+	# remove routing
+	source_based_routing $device down
+
+	return $retval
+}
+
+
+# prints usage and exits
+usage() {
+	echo "Usage: $0 -H|--host HOSTNAME -u|--username USERNAME -p|--password PASSWORD [--] [extra_args]"
+	echo "extra_args are VPN specific arguemnts"
+	echo "Example: $0 -t openvpn -H vpn.vpn-provider.com -u dan -p password -- --cipher none --dev tun25 --ca /etc/openvpn/ca.crt" 1>&2
+	exit 3
+}
+
+# main
+main() {
+	# lets get into business with getopt
+	local tmp_getops=`getopt -o ht:H:u:p:U: --long help,type:,host:,username:,password:,url: -- "$@"`
+	[ $? != 0 ] && usage
+	eval set -- "$tmp_getops"
+
+	# business time!!
+	local type lns username password test_url
+	while true ; do
+		case "$1" in
+			-h|--help) usage;;
+			-t|--type) type=$2; shift 2;;
+			-H|--host) lns="$2"; shift 2;;
+			-u|--username) username="$2"; shift 2;;
+			-p|--password) password="$2"; shift 2;;
+			-U|--url) test_url="$2"; shift 2;;
+			--) shift; break;;
+			*) usage;;
+		esac
+	done
+	[ x"$type" = x ] && usage
+	[ x"$username" = x ] && usage
+	[ x"$password" = x ] && usage
+	[ x"$test_url" = x ] && test_url=$DEFAULT_TEST_URL
+
+	# source plugin
+	source `dirname $0`/check_vpn_plugins/$type.sh || usage
+
+	local -i retval=0
+
+	# allocate device
+	local device=`_${type}_allocate_vpn_device`
+
+	# destroy any running VPN connections to this lns
+	_${type}_stop_vpn $lns
+
+	# start vpn
+	_${type}_start_vpn $lns $username $password $device "$@"
+	if [ $? -eq 0 ] && wait_for_vpn_to_come_up $type $lns $device; then
+		if vpn_connectivity_check $device $test_url; then
+			echo "OK: VPN to '$lns' up and running on '$device', '$test_url' reachable"
+		else
+			echo "Warning: VPN ($type) up, connectivity check failed to '$test_url'"
+			retval=1
+		fi
+	else
+		echo "Critical: VPN ($type) connection failed to '$lns': '$ERROR_STRING'"
+		retval=2
+	fi
+	_${type}_stop_vpn $lns $device
+	wait_for_vpn_to_come_down $type $lns $device
+	# go back to previous directory
+	rm -rf --preserve-root $tmp_vpn_dir
+	return $retval
+}
+
+main "$@"
