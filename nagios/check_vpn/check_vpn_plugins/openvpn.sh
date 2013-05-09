@@ -1,16 +1,17 @@
 #!/bin/bash
 
 # Written by Dan Fruehauf <malkodan@gmail.com>
-# Big thanks to Lacoon Security for allowing this to GPL
+# Big thanks to Lacoon Security for allowing this to be GPL
 
 ###########
 # OPENVPN #
 ###########
+declare -r OPENVPN_DEVICE_PREFIX=tun
 declare -i -r OPENVPN_PORT=1194
 
 # returns a free vpn device
 _openvpn_allocate_vpn_device() {
-	allocate_vpn_device tun
+	allocate_vpn_device $OPENVPN_DEVICE_PREFIX
 }
 
 # returns the vpn devices for the given lns
@@ -32,6 +33,7 @@ _openvpn_vpn_device() {
 # $1 - lns - where to connect to
 # $2 - username
 # $3 - password
+# $4 - device
 _openvpn_start_vpn() {
 	local lns=$1; shift
 	local username=$1; shift
@@ -41,7 +43,7 @@ _openvpn_start_vpn() {
 
 	check_open_port $lns $OPENVPN_PORT
 	if [ $? -ne 0 ]; then
-		ERROR_STRING="Port $OPENVPN_PORT closed on $lns"
+		ERROR_STRING="Port '$OPENVPN_PORT' closed on '$lns'"
 		return 1
 	fi
 
@@ -50,6 +52,9 @@ _openvpn_start_vpn() {
 	openvpn --daemon "OpenVPN-$lns" "$@" --remote $lns --tls-exit --tls-client --dev $device --route-nopull --connect-retry 1 --persist-key --persist-tun --persist-remote-ip --persist-local-ip "$@" --script-security 2 --auth-user-pass $tmp_username_password
 	local -i retval=$?
 	rm -f $tmp_username_password
+	if [ $retval -ne 0 ]; then
+		ERROR_STRING="Error: OpenVPN connection failed to '$lns'"
+	fi
 	return $retval
 }
 

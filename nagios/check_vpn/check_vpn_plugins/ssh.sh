@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Written by Dan Fruehauf <malkodan@gmail.com>
-# Big thanks to Lacoon Security for allowing this to GPL
+# Big thanks to Lacoon Security for allowing this to be GPL
 
 # You'll have to enable on the SSH server:
 #PermitTunnel=yes
@@ -50,6 +50,7 @@ _ssh_vpn_device() {
 # $1 - lns - where to connect to
 # $2 - username
 # $3 - password
+# $4 - device
 _ssh_start_vpn() {
 	local lns=$1; shift
 	local username=$1; shift
@@ -61,7 +62,7 @@ _ssh_start_vpn() {
 	local -i port=`_ssh_guess_port "$@"`
 	check_open_port $lns $port
 	if [ $? -ne 0 ]; then
-		ERROR_STRING="Port $port closed on $lns"
+		ERROR_STRING="Port '$port' closed on '$lns'"
 		return 1
 	fi
 
@@ -70,7 +71,7 @@ _ssh_start_vpn() {
 	local local_ip="$SSH_VPN_NET"2
 
 	if ! ssh -o ServerAliveInterval=10 -o TCPKeepAlive=yes "$@" $username@$lns "true"; then
-		echo "Error: Could not SSH to '$username@$lns'"
+		ERROR_STRING="Could not SSH to '$username@$lns'"
 		return 1
 	fi
 
@@ -78,7 +79,7 @@ _ssh_start_vpn() {
 	# allocate a device at the same time
 	local remote_device=$(ssh "$@" $username@$lns "for i in \`seq 0 255\`; do ! ifconfig $SSH_DEVICE_PREFIX\$i >& /dev/null && echo $SSH_DEVICE_PREFIX\$i && break; done")
 	if [ x"$remote_device" = x ]; then
-		ERROR="Error: Could not allocate '$SSH_DEVICE_PREFIX' device on '$lns'"
+		ERROR_STRING="Error: Could not allocate '$SSH_DEVICE_PREFIX' device on '$lns'"
 		return 1
 	fi
 	local -i remote_device_nr=`echo $remote_device | sed -e "s/^$SSH_DEVICE_PREFIX//"`
@@ -88,7 +89,7 @@ _ssh_start_vpn() {
 	ifconfig $device $local_ip netmask 255.255.255.252 && \
 	
 	if [ $? -ne 0 ]; then
-		echo "Error: SSH connection failed to $lns"
+		ERROR_STRING="Error: SSH connection failed to '$lns'"
 		return 1
 	fi
 }
