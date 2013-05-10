@@ -1,0 +1,284 @@
+#! /usr/bin/perl -w
+
+#
+# check_sql - run a simple test query against a SQL Server
+# Copyright (C) 2013 Dan Fruehauf <malkoadan@gmail.com>
+# Copyright (c) 2007 Thomas Guyot-Sionnest <tguyot@gmail.com>
+# Copyright (c) 2007 Nagios Plugin Development Team
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+use strict;
+use warnings;
+use vars qw($PROGNAME $VERSION $QSTRING $LABEL);
+use File::Basename qw(basename);
+use Nagios::Plugin;
+use Nagios::Plugin::Functions qw(max_state);
+use Time::HiRes qw(gettimeofday tv_interval);
+use DBI;
+
+$PROGNAME = basename($0);
+$VERSION = '0.9.3';
+$QSTRING = 'SELECT 1 AS Response';
+$LABEL = 'result';
+
+my $np = Nagios::Plugin->new(
+	usage => "Usage: %s -d dsn [ -t <timeout> ]\n"
+		. "    -U <user> -P <pass> [ -w <warn_range> ] [ -c <crit_range> ]\n"
+		. "    [ -W <warn_range> ] [ -C <crit_range> ] [ -q query ] [ -e expect_string ]\n"
+		. '    [ -r ] [ -s ] [ -l label ]',
+	version => $VERSION,
+	plugin  => $PROGNAME,
+	shortname => uc($PROGNAME),
+	blurb => 'Run a simple test query against a SQL Server',
+	extra   => "\n\nCopyright (c) 2007 Nagios Plugin Development Team",
+	timeout => 30,
+);
+
+$np->add_arg(
+	spec => 'dsn|d=s',
+	help => "-d, --dsn=<dsn>\n"
+		. '   SQL Database dsn',
+	required => 1,
+);
+
+$np->add_arg(
+	spec => 'username|U=s',
+	help => "-U, --username=<username>\n"
+		. '   Username to connect with.',
+	required => 1,
+);
+
+$np->add_arg(
+	spec => 'password|P=s',
+	help => "-P, --password=<password>\n"
+		. '   Password to use with the username.',
+	required => 1,
+);
+
+$np->add_arg(
+	spec => 'warning|w=s',
+	help => "-w, --warning=THRESHOLD\n"
+		. "   Warning threshold for the responce time. See\n"
+		. "   http://nagiosplug.sourceforge.net/developer-guidelines.html#THRESHOLDFORMAT\n"
+		. '   for the threshold format.',
+	required => 0,
+);
+
+$np->add_arg(
+	spec => 'critical|c=s',
+	help => "-c, --critical=THRESHOLD\n"
+		. "   Critical threshold for the responce time. See\n"
+		. "   http://nagiosplug.sourceforge.net/developer-guidelines.html#THRESHOLDFORMAT\n"
+		. '   for the threshold format.',
+	required => 0,
+);
+
+$np->add_arg(
+	spec => 'query|q=s',
+	help => "-q, --query=<SQL_query>\n"
+		. "   SQL Query ro execute on the server (default: '$QSTRING').",
+	default => $QSTRING,
+	required => 0,
+);
+
+$np->add_arg(
+	spec => 'expect|e=s',
+	help => "-e, --expect=<expect_string>\n"
+		. "   The expected result from the SQL server (first cell of first row). Cannot\n"
+		. '   be used with -W or -C.',
+	required => 0,
+);
+
+$np->add_arg(
+	spec => 'regexp|r+',
+	help => "-r, --regexp\n"
+		. '   Allow Perl regular expressions to be used with -e.',
+	required => 0,
+);
+
+$np->add_arg(
+	spec => 'rwarning|W=s',
+	help => "-W, --rwarning=THRESHOLD\n"
+		. "   Warning threshold for the returned value. Value must be numeric. See\n"
+		. "   http://nagiosplug.sourceforge.net/developer-guidelines.html#THRESHOLDFORMAT\n"
+		. '   for the threshold format. Cannot be used with -e.',
+	required => 0,
+);
+
+$np->add_arg(
+	spec => 'rcritical|C=s',
+	help => "-C, --rcritical=THRESHOLD\n"
+		. "   Critical threshold for the returned value. Value must be numeric. See\n"
+		. "   http://nagiosplug.sourceforge.net/developer-guidelines.html#THRESHOLDFORMAT\n"
+		. '   for the threshold format. Cannot be used with -e.',
+	required => 0,
+);
+
+$np->add_arg(
+	spec => 'show|s+',
+	help => "-s, --show\n"
+		. '   Show the result of the SQL query in the status text.',
+	required => 0,
+);
+
+$np->add_arg(
+	spec => 'label|l=s',
+	help => "-l, --label=label\n"
+		. "   Label used to present the SQL result (default: '$LABEL'). If in the form\n"
+		. "   'LABEL,UOM', enables performance data for the result. Label is effective\n"
+		. "   only when used with --show or in the form 'LABEL,UOM'.",
+	default => $LABEL,
+	required => 0,
+);
+
+$np->getopts;
+
+# Assign, then check args
+
+my $dsn = $np->opts->dsn;
+my $username = $np->opts->username;
+my $password = $np->opts->password;
+my $warning = $np->opts->warning;
+my $critical = $np->opts->critical;
+my $query = $np->opts->query;
+my $expect = $np->opts->expect;
+my $regexp = $np->opts->regexp;
+my $rwarning = $np->opts->rwarning;
+my $rcritical = $np->opts->rcritical;
+my $show = $np->opts->show;
+my ($label, $uom) = split(/,/, $np->opts->label);
+my $verbose = $np->opts->verbose;
+
+# TODO: Should check if the DBI driver exists
+
+$np->nagios_exit('UNKNOWN', 'DSN contains invalid characters.')
+	if ($dsn =~ /\`|\~|\!|\$|\%|\^|\&|\*|\||\'|\"|\<|\>|\?|\,|\(|\)/);
+
+$np->nagios_exit('UNKNOWN', 'Username is required.')
+	if ($username eq '');
+
+$np->nagios_exit('UNKNOWN', 'Password is required.')
+	if ($password eq '');
+
+$np->nagios_exit('UNKNOWN', '-e cannot be used with -W or -C')
+	if ($expect && ($rwarning || $rcritical));
+
+$np->nagios_exit('UNKNOWN', '-r have no effect without -e')
+	if ($regexp && !$expect);
+
+$np->nagios_exit('UNKNOWN', 'LABEL must be defined if UOM is used')
+	if ($uom && !$label);
+
+# First set the r* thresholds to validate them and get the threshold object.
+$np->set_thresholds(
+	warning => $rwarning,
+	critical => $rcritical,
+);
+my $rthreshold = $np->threshold;
+
+# Then we can set the normal thresholds for validation and future use.
+$np->set_thresholds(
+	warning => $warning,
+	critical => $critical,
+);
+
+# Note: There's no automated way to check if ranges makes sense, so you can
+# have a WARNING range within a CRITICAL range with no warning. I'm not going
+# to do N::P's job here so such thresholds are allowed for now.
+
+my $cs = $dsn;
+
+warn("Trying to connect. Connect string: '$cs'\n") if ($verbose);
+warn("Using the following credentials: $username, $password\n") if ($verbose > 2);
+
+# Just in case of problems, let's not hang Nagios
+alarm $np->opts->timeout;
+
+my $timestart = [gettimeofday];
+
+my $dbh = DBI->connect($cs, $username, $password,
+	{
+		PrintWarn => ($verbose ? 1 : 0),
+		PrintError => ($verbose ? 1 : 0)
+	}) or $np->nagios_exit('CRITICAL', $DBI::errstr);
+
+warn("Connected. Querying server with '$query'\n") if ($verbose > 1);
+
+# selectrow_array behavior in scalar context is undefined (driver-dependent)
+# if multiple collumns are returned. Just get the first or only collumn:
+my ($result) = $dbh->selectrow_array($query)
+	or $np->nagios_exit('CRITICAL', $DBI::errstr);
+
+$dbh->disconnect;
+
+my $timeend = [gettimeofday];
+
+#Turn off alarm
+alarm(0);
+
+my $elapsed =  tv_interval($timestart, $timeend);
+
+warn("Request complete. Time elapsed: $elapsed\n") if ($verbose);
+warn("Server returned $result\n") if ($verbose > 1);
+
+$np->add_perfdata(
+	label => "time",
+	value => $elapsed,
+	uom => 's',
+	threshold => $np->threshold,
+);
+
+# Add result perfdata if UOM is specified (see usage) and result is numeric.
+if ($uom && $result =~ /^[-+]?\d+$/) {
+	$np->add_perfdata(
+		label => lc($label),
+		value => $result,
+		uom => $uom,
+		threshold => $rthreshold,
+	);
+}
+
+# First check expect strings (if defined) as they always return CRITICAL
+if ($expect && $regexp) {
+	$np->nagios_exit('CRITICAL', "Unexpected $label" . ($show ? ": $result" : '')) unless ($result =~ /$expect/);
+} elsif ($expect) {
+	$np->nagios_exit('CRITICAL', "Unexpected $label" . ($show ? ": $result" : '')) if ($result ne $expect);
+}
+
+my @results;
+
+push (@results, $np->check_threshold($elapsed));
+
+my $nonnumeric = 0;
+if (($rwarning || $rcritical) && !($result =~ /^[-+]?\d+$/)) {
+	push (@results, ($rcritical ? CRITICAL : WARNING));
+	$nonnumeric = 1;
+} else {
+	push (@results, $np->check_threshold(check => $result, warning => $rwarning, critical => $rcritical));
+}
+
+warn ('Thresholds results: time=' . $results[0] . ', result=' . $results[1] . ', nonnumeric=' . $nonnumeric) if ($verbose);
+
+my $status = max_state(@results);
+
+if ($nonnumeric) {
+	$np->nagios_exit($status, "Result is not numeric with result threshold defined ($elapsed seconds)");
+} elsif ($show) {
+	$np->nagios_exit($status, "SQL Server $label: $result ($elapsed seconds)");
+} else {
+	$np->nagios_exit($status, "SQL Server responded in $elapsed seconds");
+}
+
