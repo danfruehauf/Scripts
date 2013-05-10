@@ -1,14 +1,30 @@
 #!/bin/bash
 
-# Written by Dan Fruehauf <malkodan@gmail.com>
-# Big thanks to Lacoon Security for allowing this to be GPL
+# ssh.sh - SSH plugin for check_vpn
+# Copyright (C) 2013 Dan Fruehauf <malkoadan@gmail.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# You'll have to enable on the SSH server:
-#PermitTunnel=yes
+# Written by Dan Fruehauf <malkodan@gmail.com>
+# Big thanks to Lacoon Security (lacoon.com) for allowing this to GPLv3
 
 ###########
 ### SSH ###
 ###########
+# You'll have to enable on the SSH server:
+#PermitTunnel=yes
+
 declare -r SSH_VPN_NET=192.168.8.
 declare -r SSH_DEVICE_PREFIX=tun
 declare -i -r SSH_PORT=22
