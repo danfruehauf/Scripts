@@ -1,5 +1,7 @@
 # check_vpn
+
 check_vpn is a nagios plugin to check VPN status.
+
 Currently the types of VPN supported are:
  * OpenVPN
  * SSH
@@ -7,6 +9,7 @@ Currently the types of VPN supported are:
  * PPTP
 
 ## Features
+
 check_vpn features the following:
  * Connect to a VPN using command line supplied parameters
  * Verify VPN connection succeded
@@ -49,6 +52,7 @@ Example:
 	./check_vpn -t openvpn -H l2tp.vpn.com -u dan -p password -- mru 1410,mtu 1410
 
 ### PPTP
+
 PPTP takes pppd options as specific arguements. <b>Don't</b> comma separate them.
 
 Example:
