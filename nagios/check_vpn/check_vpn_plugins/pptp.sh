@@ -79,7 +79,7 @@ _pptp_stop_vpn() {
 _pptp_get_pids() {
 	local lns=$1; shift
 	local device=$1; shift
-	local -i device_nr=`echo $device | sed -e "s/^$DEVICE_PREFIX//"`
+	local -i device_nr=`echo $device | sed -e "s/^$PPTP_DEVICE_PREFIX//"`
 
 	local pptp_pids=`pgrep pptp | xargs`
 	local pptp_relevant_pids
