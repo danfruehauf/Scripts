@@ -71,7 +71,7 @@ $np->add_arg(
 $np->add_arg(
 	spec => 'warning|w=s',
 	help => "-w, --warning=THRESHOLD\n"
-		. "   Warning threshold for the responce time. See\n"
+		. "   Warning threshold for the response time. See\n"
 		. "   http://nagiosplug.sourceforge.net/developer-guidelines.html#THRESHOLDFORMAT\n"
 		. '   for the threshold format.',
 	required => 0,
@@ -80,7 +80,7 @@ $np->add_arg(
 $np->add_arg(
 	spec => 'critical|c=s',
 	help => "-c, --critical=THRESHOLD\n"
-		. "   Critical threshold for the responce time. See\n"
+		. "   Critical threshold for the response time. See\n"
 		. "   http://nagiosplug.sourceforge.net/developer-guidelines.html#THRESHOLDFORMAT\n"
 		. '   for the threshold format.',
 	required => 0,

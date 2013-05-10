@@ -25,6 +25,8 @@ check_sql features the following:
  * Support any database supported by DBI
  * Run any query you'd like
  * Compare values returned in queries
+ * Regular expression matching on returned queries
+ * Return warning or critical based on thresholds (numeric results only)
 
 ## Simple Usage
 
@@ -32,19 +34,44 @@ check_sql features the following:
 
 DSN is the DBI connection string to connect to the database. Some examples:
 
+	# mysql database at localhost:3306
 	DBI:mysql:database=users;host=localhost;port=3306
 
+	# postgresql database at localhost:5432
 	DBI:Pg:dbname=homes;host=localhost;port=5432
 
-	DBI:Sybase:server=cakes:1433
+	# SQL server at cakes.microsoft.com:1433
+	DBI:Sybase:server=cakes.microsoft.com:1433
 
 Refer to the specific tutorial to find the right DSN for your DB.
+
+## Expecting Results
+
+Expecting "Awesome" at the result (-e):
+
+	./check_sql -v -s -d DSN -U USERNAME -P PASSWORD -e "Awesome" -q "select 'Awesome'"
+
+Expect a regular expression (-r and -e):
+
+	./check_sql -v -s -d DSN -U USERNAME -P PASSWORD -r -e "Awesome" -q "select 'Awesome yiiiiiiiiiiha'"
+
+## Threshold results
+
+Show a warning if larger than 10 (-W 10) and critical if larger than 100 (-C 100):
+
+	# will show an OK
+	./check_sql -v -s -d DSN -U USERNAME -P PASSWORD -W 10 -C 100 -q "select 9"
+	# will show a warning
+	./check_sql -v -s -d DSN -U USERNAME -P PASSWORD -W 10 -C 100 -q "select 11"
+	# will show an error
+	./check_sql -v -s -d DSN -U USERNAME -P PASSWORD -W 10 -C 100 -q "select 101"
 
 ## Plugin Specifics
 
 ### MySQL
 
-You'll need the DBD::MySQL driver for that.
+Things you'll need:
+ * perl DBD::MySQL
 
 Example:
 
@@ -52,7 +79,8 @@ Example:
 
 ### PostgreSQL
 
-You'll need the DBD::Pg driver for that.
+Things you'll need:
+ * perl DBD::Pg
 
 Example:
 
@@ -60,7 +88,9 @@ Example:
 
 ### SQL Server
 
-You'll need the DBD::Sybase driver for that.
+Things you'll need:
+ * perl DBD::Sybase
+ * FreeTDS (compiled with --with-tdsver=8.0)
 
 Example:
 
