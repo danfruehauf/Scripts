@@ -1,5 +1,7 @@
 # check_vpn
 
+http://exchange.nagios.org/directory/Plugins/Network-and-Systems-Management/check_vpn/details
+
 check_vpn is a nagios plugin to check VPN status.
 
 Currently the types of VPN supported are:
@@ -16,8 +18,6 @@ check_vpn features the following:
  * Test if an address behind the VPN is reachable (default is http://www.google.com)
  * Support multiple VPN connection attemps at the same time, using source based routing
  * Plugin architecture allows addition of more VPN plugins easily
-
-TODO NAGIOS EXCHANGE LINK
 
 ## Simple Usage
 
@@ -59,3 +59,6 @@ Example:
 
 	./check_vpn -t openvpn -H l2tp.vpn.com -u dan -p password -- mru 1410 mtu 1410 novj novjccomp nobsdcomp
 
+## Limitations
+
+Currently auto-allocation of devices is not "process safe", meaning that potentially two (or more) running instances may try to allocate and use the same device. I should try and resolve this quickly.
