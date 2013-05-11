@@ -19,7 +19,7 @@
 ###########
 # OPENVPN #
 ###########
-declare -r OPENVPN_DEVICE_PREFIX=tun
+[ x"$OPENVPN_DEVICE_PREFIX" = x ] && declare -r OPENVPN_DEVICE_PREFIX=tun
 declare -i -r OPENVPN_PORT=1194
 
 # returns a free vpn device

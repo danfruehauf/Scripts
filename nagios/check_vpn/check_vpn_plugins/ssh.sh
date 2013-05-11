@@ -22,8 +22,8 @@
 # You'll have to enable on the SSH server:
 #PermitTunnel=yes
 
+[ x"$SSH_DEVICE_PREFIX" = x ] && declare -r SSH_DEVICE_PREFIX=tun
 declare -r SSH_VPN_NET=192.168.8.
-declare -r SSH_DEVICE_PREFIX=tun
 declare -i -r SSH_PORT=22
 
 # returns a free vpn device
