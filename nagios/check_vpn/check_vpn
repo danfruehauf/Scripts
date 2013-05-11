@@ -171,11 +171,11 @@ main() {
 	[ x"$password" = x ] && usage
 	[ x"$test_url" = x ] && test_url=$DEFAULT_TEST_URL
 
-	# allocate device if user did not supply one
-	[ x"$device" = x ] && device=`_${type}_allocate_vpn_device`
-
 	# source plugin
 	source `dirname $0`/check_vpn_plugins/$type.sh || usage
+
+	# allocate device if user did not supply one
+	[ x"$device" = x ] && device=`_${type}_allocate_vpn_device`
 
 	local -i retval=0
 
