@@ -62,7 +62,7 @@ _openvpn_start_vpn() {
 
 	local tmp_username_password=`mktemp`
 	echo -e "$username\n$password" > $tmp_username_password
-	openvpn --daemon "OpenVPN-$lns" "$@" --remote $lns --tls-exit --tls-client --dev $device --route-nopull --connect-retry 1 --persist-key --persist-tun --persist-remote-ip --persist-local-ip "$@" --script-security 2 --auth-user-pass $tmp_username_password
+	openvpn --daemon "OpenVPN-$lns" "$@" --remote $lns --tls-exit --tls-client --route-nopull --connect-retry 1 --persist-key --persist-tun --persist-remote-ip --persist-local-ip "$@" --script-security 2 --auth-user-pass $tmp_username_password --dev $device
 	local -i retval=$?
 	rm -f $tmp_username_password
 	if [ $retval -ne 0 ]; then

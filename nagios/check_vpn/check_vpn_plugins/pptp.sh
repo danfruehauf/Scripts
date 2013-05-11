@@ -39,7 +39,8 @@ _pptp_vpn_device() {
 			devices="$devices ${DEVICE_PREFIX}$device_nr"
 		fi
 	done
-	# TODO devices will be displayed twice
+	# devices will be displayed twice, sort it out
+	device=`echo $devices | tr -s " " "\n" | sort | uniq | xargs`
 	echo "$devices"
 }
 

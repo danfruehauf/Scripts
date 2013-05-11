@@ -41,7 +41,7 @@ Example:
 
 Example:
 
-	./check_vpn -t openvpn -H ssh.vpn.com -u dan -p DUMMY_UNUSED_BY_SSH -- -o Port=4022
+	./check_vpn -t ssh -H ssh.vpn.com -u dan -p DUMMY_UNUSED_BY_SSH -- -o Port=4022
 
 ### L2TP
 
@@ -49,7 +49,7 @@ L2TP specific argument passing is still rather limited. It takes pppd options as
 
 Example:
 
-	./check_vpn -t openvpn -H l2tp.vpn.com -u dan -p password -- mru 1410,mtu 1410
+	./check_vpn -t l2tp -H l2tp.vpn.com -u dan -p password -- mru 1410,mtu 1410
 
 ### PPTP
 
@@ -57,8 +57,34 @@ PPTP takes pppd options as specific arguements. <b>Don't</b> comma separate them
 
 Example:
 
-	./check_vpn -t openvpn -H l2tp.vpn.com -u dan -p password -- mru 1410 mtu 1410 novj novjccomp nobsdcomp
+	./check_vpn -t pptp -H l2tp.vpn.com -u dan -p password -- mru 1410 mtu 1410 novj novjccomp nobsdcomp
 
 ## Limitations
 
-Currently auto-allocation of devices is not "process safe", meaning that potentially two (or more) running instances may try to allocate and use the same device. I should try and resolve this quickly.
+### Usage Of Same Device
+Currently auto-allocation of devices is not "process safe", meaning that potentially two (or more) running instances may try to allocate and use the same device. This problem can be mitigated if you use the <b>-d</b> or <b>--device</b> option, so for instance if you have 3 hosts to check in nagios, the commands for each would be:
+
+	# host1
+	./check_vpn -t openvpn -H host1.openvpn.vpn.com -u nagios_user -p nagios_password -d tun1
+	# host2
+	./check_vpn -t openvpn -H host2.openvpn.vpn.com -u nagios_user -p nagios_password -d tun2
+	# host3
+	./check_vpn -t openvpn -H host3.openvpn.vpn.com -u nagios_user -p nagios_password -d tun3
+
+	# or the general case
+	host=hostX.openvpn.vpn.com
+	./check_vpn -t openvpn -H $host -u nagios_user -p nagios_password -d tun`echo $host | cut -c5`
+
+That would completely separate them from each other, allowing every check to use a different device.
+
+If your hosts are not really aligned with nice hostnames, another way of generating a unique device number per host is using a checksum and a hash:
+
+	# first-host.openvpn.vpn.com
+	declare -i device_number=$(expr `echo first-host.openvpn.vpn.com | cksum | cut -d' ' -f1` % 255)
+	# device_number=11
+
+	# another-host.openvpn.vpn.com
+	declare -i device_number=$(expr `echo another-host.openvpn.vpn.com | cksum | cut -d' ' -f1` % 255)
+	# device_number=168
+
+This was tested fully with OpenVPN, however I still need to setup a proper test environment for L2TP and PPTP.

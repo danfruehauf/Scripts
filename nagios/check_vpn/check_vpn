@@ -138,21 +138,21 @@ vpn_connectivity_check() {
 
 # prints usage and exits
 usage() {
-	echo "Usage: $0 -H|--host HOSTNAME -u|--username USERNAME -p|--password PASSWORD [--] [extra_args]"
+	echo "Usage: $0 -H|--host HOSTNAME -u|--username USERNAME -p|--password PASSWORD [-d|--device DEVICE] [-U|--url TEST_URL] [--] [extra_args]"
 	echo "extra_args are VPN specific arguemnts"
-	echo "Example: $0 -t openvpn -H vpn.vpn-provider.com -u dan -p password -- --cipher none --dev tun25 --ca /etc/openvpn/ca.crt" 1>&2
+	echo "Example: $0 -t openvpn -H vpn.vpn-provider.com -u dan -p password -d tun25 -- --cipher none --ca /etc/openvpn/ca.crt" 1>&2
 	exit 3
 }
 
 # main
 main() {
 	# lets get into business with getopt
-	local tmp_getops=`getopt -o ht:H:u:p:U: --long help,type:,host:,username:,password:,url: -- "$@"`
+	local tmp_getops=`getopt -o ht:H:u:p:d:U: --long help,type:,host:,username:,password:,device:,url: -- "$@"`
 	[ $? != 0 ] && usage
 	eval set -- "$tmp_getops"
 
 	# business time!!
-	local type lns username password test_url
+	local type lns username password device test_url
 	while true ; do
 		case "$1" in
 			-h|--help) usage;;
@@ -160,6 +160,7 @@ main() {
 			-H|--host) lns="$2"; shift 2;;
 			-u|--username) username="$2"; shift 2;;
 			-p|--password) password="$2"; shift 2;;
+			-d|--device) device="$2"; shift 2;;
 			-U|--url) test_url="$2"; shift 2;;
 			--) shift; break;;
 			*) usage;;
@@ -170,13 +171,13 @@ main() {
 	[ x"$password" = x ] && usage
 	[ x"$test_url" = x ] && test_url=$DEFAULT_TEST_URL
 
+	# allocate device if user did not supply one
+	[ x"$device" = x ] && device=`_${type}_allocate_vpn_device`
+
 	# source plugin
 	source `dirname $0`/check_vpn_plugins/$type.sh || usage
 
 	local -i retval=0
-
-	# allocate device
-	local device=`_${type}_allocate_vpn_device`
 
 	# destroy any running VPN connections to this lns
 	_${type}_stop_vpn $lns
