@@ -100,8 +100,8 @@ source_based_routing() {
 
 	# extract table number, local and remote addressess
 	local -i table_nr=`get_routing_table_for_device $device`
-	local interface_remote_address=`ip addr show $device | grep inet | cut -d' ' -f8 | cut -d/ -f1`
-	local interface_local_address=`ip addr show $device | grep inet | cut -d' ' -f6`
+	local interface_remote_address=`ip addr show $device | grep "\binet\b" | cut -d' ' -f8 | cut -d/ -f1`
+	local interface_local_address=`ip addr show $device | grep "\binet\b" | cut -d' ' -f6`
 
 	# act on action
 	if [ "$action" = "up" ]; then
