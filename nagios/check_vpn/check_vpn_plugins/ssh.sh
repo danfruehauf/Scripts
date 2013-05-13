@@ -97,8 +97,14 @@ _ssh_start_vpn() {
 	fi
 	local -i remote_device_nr=`echo $remote_device | sed -e "s/^$SSH_DEVICE_PREFIX//"`
 
+	# pass correct tunnel parameters
+	local tunnel_parameters="-o Tunnel=point-to-point"
+	if [ "$SSH_DEVICE_PREFIX" = "tap" ]
+		tunnel_parameters="-o Tunnel=ethernet"
+	fi
+
 	# activate tunnel
-	ssh -o ServerAliveInterval=10 -o TCPKeepAlive=yes -f -w $device_nr:$remote_device_nr "$@" $username@$lns "/sbin/ifconfig $remote_device $remote_ip netmask 255.255.255.252" && \
+	ssh -o ServerAliveInterval=10 -o TCPKeepAlive=yes -f "$@" -w $device_nr:$remote_device_nr $tunnel_parameters $username@$lns "/sbin/ifconfig $remote_device $remote_ip netmask 255.255.255.252" && \
 	ifconfig $device $local_ip netmask 255.255.255.252 && \
 	
 	if [ $? -ne 0 ]; then
