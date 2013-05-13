@@ -4,11 +4,15 @@ http://exchange.nagios.org/directory/Plugins/Network-and-Systems-Management/chec
 
 check_vpn is a nagios plugin to check VPN status.
 
-Currently the types of VPN supported are:
+The types of VPNs currently supported are:
  * OpenVPN
  * SSH
  * L2TP
  * PPTP
+
+Future:
+ * IPSEC (using racoon road warrior client)
+ * Anything else people would like to see supported
 
 ## Features
 
@@ -67,8 +71,8 @@ Example:
 
 ## Limitations
 
-### Usage Of Same Device
-Currently auto-allocation of devices is not "process safe", meaning that potentially two (or more) running instances may try to allocate and use the same device. This problem can be mitigated if you use the <b>-d</b> or <b>--device</b> option, so for instance if you have 3 hosts to check in nagios, the commands for each would be:
+### Multiple Access
+Currently auto-allocation of devices is not fully "process safe", meaning that potentially two (or more) running instances may try to allocate and use the same device. This problem can be mitigated if you use the <b>-d</b> or <b>--device</b> option, so for instance if you have 3 hosts you'd like to check, the commands for each would be:
 
 	# host1
 	./check_vpn -t openvpn -H host1.openvpn.vpn.com -u nagios_user -p nagios_password -d tun1
@@ -93,4 +97,26 @@ If your hosts are not really aligned with nice hostnames, another way of generat
 	declare -i device_number=$(expr `echo another-host.openvpn.vpn.com | cksum | cut -d' ' -f1` % 255)
 	# device_number=168
 
-This was tested fully with OpenVPN, however I still need to setup a proper test environment for L2TP and PPTP.
+This was tested fully with OpenVPN and SSH, however I still need to setup a proper test environment for L2TP and PPTP.
+
+### Same IP, Different Interface
+
+If you may be connecting to two (or more) different servers who may assign you the same IP address, such as:
+
+	# ifconfig
+	tap0      Link encap:Ethernet  HWaddr XX:XX:XX:XX:XX:XX  
+	      inet addr:10.1.0.1  Bcast:10.1.0.255  Mask:255.255.255.0
+	      ...
+
+	tap1      Link encap:Ethernet  HWaddr XX:XX:XX:XX:XX:XX  
+	      inet addr:10.1.0.1  Bcast:10.1.0.255  Mask:255.255.255.0
+	      ...
+
+	tap2      Link encap:Ethernet  HWaddr XX:XX:XX:XX:XX:XX  
+	      inet addr:10.1.0.1  Bcast:10.1.0.255  Mask:255.255.255.0
+	      ...
+
+The behavior in this case would be undefined. I've asked on Server Fault just to be sure and here is the link:
+http://serverfault.com/questions/459919/multiple-vpn-devices-with-the-same-ip
+
+If you are facing such a situation then I'm sorry, but I can't really help with that...
