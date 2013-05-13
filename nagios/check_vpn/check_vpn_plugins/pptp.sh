@@ -56,6 +56,11 @@ _pptp_start_vpn() {
 	local device=$1; shift
 	local -i device_nr=`echo $device | sed -e "s/^$PPTP_DEVICE_PREFIX//"`
 
+	# load ppp_mppe if needed
+	#if echo "$@" | grep -q "\brequire-mppe\b"; then
+	#	! modprobe ppp_mppe && ERROR_STRING="Could not load ppp_mppe module" && return 1
+	#fi
+
 	check_open_port $lns $PPTP_PORT
 	if [ $? -ne 0 ]; then
 		ERROR_STRING="Port '$PPTP_PORT' closed on '$lns'"
@@ -63,8 +68,6 @@ _pptp_start_vpn() {
 	fi
 
 	pptp --debug --timeout 10 $lns -- lock debug unit $device_nr nodefaultroute noauth user $username password $password "$@"
-	# TODO need to wait for pppd to start, otherwise pppd just exits...
-	sleep 15
 	if [ $? -ne 0 ]; then
 		ERROR_STRING="Error: PPTP connection failed to '$lns'"
 		return 1
@@ -119,7 +122,8 @@ _pptp_get_pids() {
 _pptp_is_vpn_up() {
 	local lns=$1; shift
 	local device=$1; shift
-	ifconfig $device >& /dev/null #&& \
+	ifconfig $device >& /dev/null && \
+		ip addr show dev $device | grep -q "\binet\b"
 	#local local_peer_addr=`ip -f inet addr show dev $device | grep inet | tr -s " " | cut -d' ' -f3` && \
 	#local remote_peer_addr=`ip -f inet addr show dev $device | grep inet | tr -s " " | cut -d' ' -f5 | cut -d'/' -f1` && \
 	#ping -W 3 -c 1 -I $local_peer_addr $remote_peer_addr >& /dev/null

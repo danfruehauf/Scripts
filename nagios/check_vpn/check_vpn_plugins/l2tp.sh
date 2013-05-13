@@ -143,7 +143,8 @@ _l2tp_get_pids() {
 _l2tp_is_vpn_up() {
 	local lns=$1; shift
 	local device=$1; shift
-	ifconfig $device >& /dev/null
+	ifconfig $device >& /dev/null && \
+		ip addr show dev $device | grep -q "\binet\b"
 }
 
 # generate ppp options file, generically
