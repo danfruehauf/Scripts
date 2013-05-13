@@ -18,9 +18,9 @@ Future:
 
 check_vpn features the following:
  * Connect to a VPN using command line supplied parameters
- * Verify VPN connection succeded
+ * Verify VPN connection succeeded
  * Test if an address behind the VPN is reachable (default is http://www.google.com)
- * Support multiple VPN connection attemps at the same time, using source based routing
+ * Support multiple VPN connection attempts at the same time, using source based routing
  * Plugin architecture allows addition of more VPN plugins easily
 
 ## Simple Usage
@@ -63,7 +63,7 @@ Example:
 
 ### PPTP
 
-PPTP takes pppd options as specific arguements. <b>Don't</b> comma separate them.
+PPTP takes pppd options as specific arguments. <b>Don't</b> comma separate them.
 
 Example:
 
