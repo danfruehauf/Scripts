@@ -157,7 +157,7 @@ _l2tp_generate_ppp_options() {
 	local username=$1; shift
 	local password=$1; shift
 	local device=$1; shift
-	local -i device_nr=`echo $device | sed -e "s/^$DEVICE_PREFIX//"`
+	local -i device_nr=`echo $device | sed -e "s/^$L2TP_DEVICE_PREFIX//"`
 	local extra_ppp_opts=`echo "$@" | tr -s "," "\n"`
 
 	echo "
