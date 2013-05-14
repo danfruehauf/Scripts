@@ -55,7 +55,12 @@ _l2tp_start_vpn() {
 	local device=$1; shift
 
 	if lsmod | grep -q pppol2tp; then
-		echo "pppol2tp.ko is loaded, please rmmod it!" 1>&2
+		ERROR_STRING="Error: pppol2tp.ko is loaded, please rmmod it!"
+		return 1
+	fi
+
+	if ! which xl2tpd >& /dev/nulll; then
+		ERROR_STRING="Error: xl2tpd not installed"
 		return 1
 	fi
 

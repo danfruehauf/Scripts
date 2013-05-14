@@ -54,6 +54,11 @@ _openvpn_start_vpn() {
 	local device=$1; shift
 	local -i retval=0
 
+	if ! which openvpn >& /dev/nulll; then
+		ERROR_STRING="Error: openvpn not installed"
+		return 1
+	fi
+
 	check_open_port $lns $OPENVPN_PORT
 	if [ $? -ne 0 ]; then
 		ERROR_STRING="Port '$OPENVPN_PORT' closed on '$lns'"

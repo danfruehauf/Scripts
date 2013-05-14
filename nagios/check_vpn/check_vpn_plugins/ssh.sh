@@ -72,6 +72,11 @@ _ssh_start_vpn() {
 	local -i device_nr=`echo $device | sed -e "s/^$SSH_DEVICE_PREFIX//"`
 	local -i retval=0
 
+	if ! which ssh >& /dev/nulll; then
+		ERROR_STRING="Error: ssh not installed"
+		return 1
+	fi
+
 	local -i port=`_ssh_guess_port "$@"`
 	check_open_port $lns $port
 	if [ $? -ne 0 ]; then

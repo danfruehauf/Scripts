@@ -56,10 +56,10 @@ _pptp_start_vpn() {
 	local device=$1; shift
 	local -i device_nr=`echo $device | sed -e "s/^$PPTP_DEVICE_PREFIX//"`
 
-	# load ppp_mppe if needed
-	#if echo "$@" | grep -q "\brequire-mppe\b"; then
-	#	! modprobe ppp_mppe && ERROR_STRING="Could not load ppp_mppe module" && return 1
-	#fi
+	if ! which pptp >& /dev/nulll; then
+		ERROR_STRING="Error: pptp not installed"
+		return 1
+	fi
 
 	check_open_port $lns $PPTP_PORT
 	if [ $? -ne 0 ]; then
