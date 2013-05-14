@@ -85,9 +85,8 @@ check_open_port() {
 # returns routing table number for device
 # $1 - device
 get_routing_table_for_device() {
-	# TODO we assume device is tunXX
-	local -i device_nr=${device:3}
-	local -i table_nr=$device_nr+31000
+	local device=$1; shift
+	local -i table_nr=$(expr `echo $device | cksum | cut -d' ' -f1` % 32768)
 	echo $table_nr
 }
 
@@ -103,11 +102,16 @@ source_based_routing() {
 	local interface_remote_address=`ip addr show $device | grep "\binet\b" | cut -d' ' -f8 | cut -d/ -f1`
 	local interface_local_address=`ip addr show $device | grep "\binet\b" | cut -d' ' -f6`
 
+	# TODO should somehow probe remote address, as tap devices
+	# will not work without the remote address being set as gateways
+	local via_argument="dev $device"
+	[ x"$REMOTE_GW" != x ] && via_argument="via $REMOTE_GW"
+
 	# act on action
 	if [ "$action" = "up" ]; then
 		route add $interface_remote_address dev $device >& /dev/null
 		ip rule add from $interface_local_address table $table_nr >& /dev/null
-		ip route add default dev $device table $table_nr
+		ip route add default $via_argument table $table_nr
 	elif [ "$action" = "down" ]; then
 		ip rule delete from $interface_local_address table $table_nr >& /dev/null
 		ip route delete table $routing_table_number >& /dev/null

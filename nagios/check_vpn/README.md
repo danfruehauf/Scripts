@@ -71,7 +71,24 @@ Example:
 
 ## Limitations
 
+### TAP Device Gateway Guessing
+
+If using TAP devices with OpenVPN, the remote gateway cannot be guessed, causing packets to not route properly. This can be overcome by running:
+
+	REMOTE_GW=10.1.0.1 ./check_vpn -t openvpn -H vpn.openvpn.com -u dan -p my_secret_password -d tap76 -- --ca ca.crt
+
+This will cause the source based routing line to be:
+
+	ip route add default via 10.1.0.1 table PRIVATE_ROUTING_TABLE
+
+Instead of:
+
+	ip route add default dev tap76 table PRIVATE_ROUTING_TABLE
+
+If you have any ideas about how to overcome this nicely, please advise me.
+
 ### Multiple Access
+
 Currently auto-allocation of devices is not fully "process safe", meaning that potentially two (or more) running instances may try to allocate and use the same device. This problem can be mitigated if you use the <b>-d</b> or <b>--device</b> option, so for instance if you have 3 hosts you'd like to check, the commands for each would be:
 
 	# host1
