@@ -19,6 +19,9 @@
 # test in front of google.com
 declare -r DEFAULT_TEST_URL=http://www.google.com
 
+# check_vpn lock, for preventing multiple access to resources
+declare -r CHECK_VPN_LOCK=/var/run/check_vpn
+
 # global error string to report errors
 ERROR_STRING=""
 
@@ -38,6 +41,25 @@ allocate_vpn_device() {
 ################################
 # CORE check_vpn FUNCTIONALITY #
 ################################
+
+# locks and prevents from multiple access
+lock_check_vpn() {
+	local -i i=0
+	while [ $i -lt 30 ]; do
+		mkdir $CHECK_VPN_LOCK >& /dev/null && \
+			trap "{ rmdir $CHECK_VPN_LOCK; echo 'Critical: Aborted.'; exit 2; }" INT && \
+			return 0
+		sleep 1
+		let i=$i+1
+	done
+	echo "Critical: Couldn't obtain exclusive check_vpn lock '$CHECK_VPN_LOCK'"
+	exit 2
+}
+
+# unlocks lock
+unlock_check_vpn() {
+	rmdir $CHECK_VPN_LOCK
+}
 
 # return true if vpn is up, false if it hadn't
 # $1 - type
@@ -153,7 +175,7 @@ vpn_connectivity_check() {
 
 # prints usage and exits
 usage() {
-	echo "Usage: $0 -H|--host HOSTNAME -u|--username USERNAME -p|--password PASSWORD [-d|--device DEVICE] [-U|--url TEST_URL] [--] [extra_args]"
+	echo "Usage: $0 -t|--type VPN_TYPE [-l|--lock] -H|--host HOSTNAME -u|--username USERNAME -p|--password PASSWORD [-d|--device DEVICE] [-U|--url TEST_URL] [--] [extra_args]"
 	echo "extra_args are VPN specific arguemnts"
 	echo "Example: $0 -t openvpn -H vpn.vpn-provider.com -u dan -p password -d tun25 -- --cipher none --ca /etc/openvpn/ca.crt" 1>&2
 	exit 3
@@ -162,15 +184,16 @@ usage() {
 # main
 main() {
 	# lets get into business with getopt
-	local tmp_getops=`getopt -o ht:H:u:p:d:U: --long help,type:,host:,username:,password:,device:,url: -- "$@"`
+	local tmp_getops=`getopt -o hlt:H:u:p:d:U: --long help,lock,type:,host:,username:,password:,device:,url: -- "$@"`
 	[ $? != 0 ] && usage
 	eval set -- "$tmp_getops"
 
 	# business time!!
-	local type lns username password device test_url
+	local lock type lns username password device test_url
 	while true ; do
 		case "$1" in
 			-h|--help) usage;;
+			-l|--lock) lock=yes; shift 1;;
 			-t|--type) type=$2; shift 2;;
 			-H|--host) lns="$2"; shift 2;;
 			-u|--username) username="$2"; shift 2;;
@@ -188,6 +211,9 @@ main() {
 
 	# source plugin
 	source `dirname $0`/check_vpn_plugins/$type.sh || usage
+
+	# locks and prevents multiple access
+	[ x"$lock" = x"yes" ] && lock_check_vpn
 
 	# allocate device if user did not supply one
 	[ x"$device" = x ] && device=`_${type}_allocate_vpn_device`
@@ -214,6 +240,7 @@ main() {
 	wait_for_vpn_to_come_down $type $lns $device
 	# go back to previous directory
 	rm -rf --preserve-root $tmp_vpn_dir
+	[ x"$lock" = x"yes" ] && unlock_check_vpn
 	return $retval
 }
 

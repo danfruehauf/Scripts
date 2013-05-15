@@ -21,6 +21,7 @@ check_vpn features the following:
  * Verify VPN connection succeeded
  * Test if an address behind the VPN is reachable (default is http://www.google.com)
  * Support multiple VPN connection attempts at the same time, using source based routing
+ * Does not interfere with current network communications of machine (using source based routing per connected device)
  * Plugin architecture allows addition of more VPN plugins easily
 
 ## Simple Usage
@@ -53,6 +54,8 @@ Example:
 	# running on a tap device
 	SSH_DEVICE_PREFIX=tap ./check_vpn -t ssh -H ssh.vpn.com -u dan -p DUMMY_UNUSED_BY_SSH
 
+SSH plugin does not support password authentication. You will have to either use <b>ssh-agent</b> or <i>-i KEY_FILE</i>.
+
 ### L2TP
 
 L2TP specific argument passing is still rather limited. It takes pppd options as specific argument and they should be <b>comma separated</b>.
@@ -67,7 +70,23 @@ PPTP takes pppd options as specific arguments. <b>Don't</b> comma separate them.
 
 Example:
 
-	./check_vpn -t pptp -H l2tp.vpn.com -u dan -p password -- mru 1410 mtu 1410 novj novjccomp nobsdcomp
+	./check_vpn -t pptp -H pptp.vpn.com -u dan -p password -- mru 1410 mtu 1410 novj novjccomp nobsdcomp
+
+## Locking
+
+Running from nagios one cannot really control when checks take place. Some of the limitations listed below can be addressed by using exclusive locking with check_vpn, causing checks to run sequentially.
+
+I've implemented rather simplistic mkdir locks but it seems to suffice, I don't like to over-engineer when not necessary.
+
+To use locking you need ot specify <i>-l</i> or <i>--lock</i>. For instance the following will run sequentially:
+
+	./check_vpn -l -t l2tp -H l2tp-1.vpn.com -u dan -p password &
+	./check_vpn -l -t l2tp -H l2tp-2.vpn.com -u dan -p password &
+	./check_vpn -l -t l2tp -H l2tp-3.vpn.com -u dan -p password &
+
+Generally speaking I would encourage running check_vpn with the <i>--lock</i> option as it can avoid many problems. Should the lock file get stuck and undeleted for any reason please:
+ * Fill in an issue of how to reproduce
+ * rmdir /var/run/check_vpn
 
 ## Limitations
 
@@ -116,6 +135,8 @@ If your hosts are not really aligned with nice hostnames, another way of generat
 
 This was tested fully with OpenVPN and SSH, however I still need to setup a proper test environment for L2TP and PPTP.
 
+In case multiple access is still being an issue, please refer to the section about <b>Locking</b>.
+
 ### Same IP, Different Interface
 
 If you may be connecting to two (or more) different servers who may assign you the same IP address, such as:
@@ -136,4 +157,4 @@ If you may be connecting to two (or more) different servers who may assign you t
 The behavior in this case would be undefined. I've asked on Server Fault just to be sure and here is the link:
 http://serverfault.com/questions/459919/multiple-vpn-devices-with-the-same-ip
 
-If you are facing such a situation then I'm sorry, but I can't really help with that...
+If you are facing such a situation please refer to the section of <b>Locking</b>.
