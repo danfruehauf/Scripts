@@ -86,7 +86,18 @@ check_open_port() {
 # $1 - device
 get_routing_table_for_device() {
 	local device=$1; shift
-	local -i table_nr=$(expr `echo $device | cksum | cut -d' ' -f1` % 32768)
+	local device_prefix=${device:0:3}
+	local -i device_nr=`echo $device | sed -e 's/^[a-z]\+//g'`
+
+	local -i device_nr_base=5000
+	case "$device_prefix" in
+		tap) device_nr_base=2000;;
+		tun) device_nr_base=3000;;
+		ppp) device_nr_base=4000;;
+		*) device_nr_base=5000;;
+	esac
+
+	local -i table_nr=`expr $device_nr_base + $device_nr`
 	echo $table_nr
 }
 
