@@ -11,7 +11,7 @@ Follow them, they try to avoid havoc and chaos.
 </pre>
  * You may have a header written in the style of:
 <pre>
-	# Written by Dan Fruehauf <malkodan@gmail.com>
+	# Written by Dan Fruehauf <<malkodan@gmail.com>>
 </pre>
  * Indent everything with tabs and not with spaces!
    * And if you are indenting with spaces, be consistent with it!
@@ -27,7 +27,7 @@ Follow them, they try to avoid havoc and chaos.
  * In case there is a use for a temporary file, use *mktemp* to generate it and make sure to remove it:
 <pre>
 	local temp_filename=`mktemp`
-	<<< operations with $temp_filename >>>
+	&lt;&lt; operations with $temp_filename &gt;&gt;
 	rm -f $temp_filename
 	# what NOT to do:
 	local temp_shitty_filename=/tmp/i.am.idiot.$$
@@ -123,7 +123,7 @@ Follow them, they try to avoid havoc and chaos.
 <pre>
 	# this function returns 3 random numbers
 	random3() {
-		echo "294,3729,737"
+		echo "$RANDOM,$RANDOM,$RANDOM"
 	}
 
 	local random_number_tuple=`random3`
