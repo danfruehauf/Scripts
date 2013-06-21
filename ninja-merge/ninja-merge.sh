@@ -161,7 +161,7 @@ copy_collision_file() {
 	local src_file_checksum=$1; shift
 	# create directory
 	if test -f "$dst_dir/$src_file.$src_file_checksum"; then
-		echo "ERROR: File '$dst_dir/$src_file.$src_file_checksum' already exists, cannot copy!" 1>&2
+		echo "WARN: File '$dst_dir/$src_file.$src_file_checksum' already exists, cannot copy!" 1>&2
 	else
 		mkdir -p "$dst_dir/`dirname $src_file`"
 		[ "$DEBUG" = yes ] && echo "INSPECT Copying '$src_dir/$src_file' -> '$dst_dir/$src_file.$src_file_checksum'" 1>&2
@@ -202,10 +202,24 @@ merge_directories() {
 		else
 			[ "$DEBUG" = yes ] && echo "Collision on '$file', moving to inspection directory" 1>&2
 			copy_collision_file $src_dir $inspect_dir $file $src_file_checksum
+			copy_collision_file $dst_dir $inspect_dir $file $dst_file_checksum
 		fi
 	done
 	unset IFS
-	#rm -f $tmp_rsync_output $tmp_collisions
+	rm -f $tmp_rsync_output $tmp_collisions
+}
+
+# returns a list of directories sorted by size
+# "$@" - directories to sort
+sort_directories_by_size() {
+	local tmp_output=`mktemp`
+	local dir
+	for dir in "$@"; do
+		local -i size=`du -c $dir | tail -1 | cut -f1`
+		echo "$size $dir" >> $tmp_output
+	done
+	sort -n -r $tmp_output | cut -d' ' -f2 | xargs
+	rm -f $tmp_output
 }
 
 # prints usage
@@ -215,10 +229,12 @@ usage() {
 avoids duplicates."
 	echo "
 Options:
-  -s, --source               Source directory.
+  -s, --source               Source directories. Can be specified multiple
+                             times.
   -d, --destination          Destination directory.
   -i, --inspection           Inspection directory - all rejects will end up
                              here.
+  -o, --sort                 Sort source directories by size before copying.
   -t, --test                 Run test suite. Still needs source and destination
                              directories, but doesn't modify them.
   -v, --verbose              Print more debug messages."
@@ -229,20 +245,22 @@ Options:
 # arguments will be parsed with getopt, see usage()
 main() {
 	# parse options with getopt
-	local tmp_getops=`getopt -o hs:d:i:tv --long help,source:,destination:,test,verbose -- "$@"`
+	local tmp_getops=`getopt -o hs:d:i:otv --long help,source:,destination:,sort,test,verbose -- "$@"`
 	[ $? != 0 ] && usage
 
 	eval set -- "$tmp_getops"
-	local src_dir dst_dir inspect_dir
+	local src_dirs dst_dir inspect_dir
 	local test=no
+	local sort=yes
 
 	# parse the options
 	while true ; do
 		case "$1" in
 			-h|--help) usage;;
-			-s|--source) src_dir="$2"; shift 2;;
+			-s|--source) src_dirs="$src_dirs $2"; shift 2;;
 			-d|--destination) dst_dir="$2"; shift 2;;
 			-i|--inspection) inspect_dir="$2"; shift 2;;
+			-o|--sort) sort="yes"; shift 1;;
 			-t|--test) test="yes"; shift 1;;
 			-v|--verbose) DEBUG="yes"; shift 1;;
 			--) shift; break;;
@@ -251,8 +269,7 @@ main() {
 	done
 
 	# make sure src_dir exists
-	[ x"$src_dir" = x ] && usage
-	[ ! -d "$src_dir" ] && echo "Supplied source directory does not exist: '$src_dir'" && usage
+	[ x"$src_dirs" = x ] && usage
 
 	# test only? needs only src_dir
 	# exits after test
@@ -266,8 +283,21 @@ main() {
 	[ x"$inspect_dir" = x ] && usage
 	[ ! -d "$inspect_dir" ] && echo "Supplied inspection directory does not exist: '$inspect_dir'" && usage
 
+	# sort directories by size
+	src_dirs=`sort_directories_by_size $src_dirs`
+
+	# sort directories by size (can take time if directories are big)
+	if [ "$sort" = "yes" ]; then
+		src_dirs=`sort_directories_by_size $src_dirs`
+	fi
+
 	# do shit (copy files).
-	merge_directories $src_dir $dst_dir $inspect_dir
+	local src_dir
+	for src_dir in $src_dirs; do
+		[ ! -d "$src_dir" ] && echo "Supplied source directory does not exist: '$src_dir'" && usage
+		echo "Merging '$src_dir' >> '$dst_dir'" 1>&2
+		merge_directories $src_dir $dst_dir $inspect_dir
+	done
 }
 
 main "$@"
