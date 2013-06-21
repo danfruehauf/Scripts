@@ -262,7 +262,7 @@ main() {
 	eval set -- "$tmp_getops"
 	local src_dirs dst_dir inspect_dir
 	local test=no
-	local sort=yes
+	local sort=no
 
 	# parse the options
 	while true ; do
