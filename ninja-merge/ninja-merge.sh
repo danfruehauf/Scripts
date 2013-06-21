@@ -188,9 +188,20 @@ merge_directories() {
 	local -i number_of_collisions=`wc -l $tmp_collisions | cut -d' ' -f1`
 	[ "$DEBUG" = yes ] && echo "Directory '$src_dir' had '$number_of_collisions' collisions" 1>&2
 
+	# if we have a LARGE number of collisions, we might as well inspect it
+	if [ $number_of_collisions -gt 10000 ]; then
+		local src_dir_num_files=`find $src_dir -type f | wc -l`
+		local -i collision_percent=`echo "$number_of_collisions/$src_dir_num_files*100" | bc -l | cut -d. -f1`
+		echo "WARN: Large number of collisions for '$src_dir', collision ratio: '$collision_percent%'" 1>&2
+		if [ $number_of_collisions -eq $src_dir_num_files ]; then
+			echo "WARN: Source directory '$src_dir' had a collision for every file it contains, skipping verification" 1>&2
+			return
+		fi
+	fi
+
 	# iterate on collisions
-	local file
 	IFS=$'\n'
+	local file
 	for file in `cat $tmp_collisions`; do
 		[ "$DEBUG" = yes ] && echo "Collision on '$file'" 1>&2
 		local src_file="$src_dir/$file"
