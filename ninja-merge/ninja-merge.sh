@@ -283,9 +283,6 @@ main() {
 	[ x"$inspect_dir" = x ] && usage
 	[ ! -d "$inspect_dir" ] && echo "Supplied inspection directory does not exist: '$inspect_dir'" && usage
 
-	# sort directories by size
-	src_dirs=`sort_directories_by_size $src_dirs`
-
 	# sort directories by size (can take time if directories are big)
 	if [ "$sort" = "yes" ]; then
 		src_dirs=`sort_directories_by_size $src_dirs`
