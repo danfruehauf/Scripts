@@ -53,13 +53,11 @@ run_tests() {
 	local src_dir_tmp=`mktemp -d -u`
 	cp -a "$src_dir" $src_dir_tmp
 	echo "Running tests with source directory: '$src_dir_tmp'" 1>&2
-	local src_db=`get_index_for_dir $index_dir $src_dir_tmp`
 
 	# dest dir
 	local dest_dir_tmp=`mktemp -d -u`
 	cp -a "$src_dir" $dest_dir_tmp
 	echo "Running tests with destination directory: '$dest_dir_tmp'" 1>&2
-	local dest_db=`get_index_for_dir $index_dir $dest_dir_tmp`
 
 	# inspection dir
 	local inspect_dir_tmp=`mktemp -d`
@@ -112,8 +110,25 @@ run_tests() {
 	test_message $retval no "Files to be inspected ^ 2"
 	rm -f "$src_dir_tmp/INSPECT ME PLEASE"
 
+	#####################################################
+	# TEST #4: same size, same name, different contents #
+	#####################################################
+	# test collision, same size
+	retval=0
+	echo "1234" > \
+		"$src_dir_tmp/INSPECT SAME SIZE"
+	echo "4567" > \
+		"$dest_dir_tmp/INSPECT SAME SIZE"
+	local src_inspect_file_checksum=`md5sum "$src_dir_tmp/INSPECT SAME SIZE" | cut -d' ' -f1`
+	local dst_inspect_file_checksum=`md5sum "$dest_dir_tmp/INSPECT SAME SIZE" | cut -d' ' -f1`
+	merge_directories $src_dir_tmp $dest_dir_tmp $inspect_dir_tmp
+	! test -f "$inspect_dir_tmp/INSPECT SAME SIZE.$src_inspect_file_checksum" && retval=1
+	test_message $retval no "Files to be inspected ^ 3"
+	rm -f "$src_dir_tmp/INSPECT SAME SIZE"
+
+
 	######################################
-	# TEST #4: verify files to be copied #
+	# TEST #5: verify files to be copied #
 	######################################
 	# files to be copied
 	retval=0
@@ -121,7 +136,7 @@ run_tests() {
 	test_message $retval no "Files to be copied"
 
 	#############################
-	# TEST #5: injecting a file #
+	# TEST #6: injecting a file #
 	#############################
 	retval=0
 	echo "I HAVE BEEN INJECTED AND I NEED TO BE COPIED" > "$src_dir_tmp/COPY ME PLEASE AFTER UPDATE"
