@@ -231,29 +231,32 @@ merge_directories() {
 	local file
 	for file in `cat $tmp_collisions`; do
 		[ "$DEBUG" = yes ] && echo "Collision on '$file'" 1>&2
-		local src_file="$src_dir/$file"
-		local src_file_checksum=`$CHECKSUM_TYPE "$src_file" | cut -d' ' -f1`
-		local dst_file="$dst_dir/$file"
-		local dst_file_checksum=`$CHECKSUM_TYPE "$dst_file" | cut -d' ' -f1`
-		local -i src_file_size=`wc -c $src_file | cut -d' ' -f1`
-		local -i dst_file_size=`wc -c $dst_file | cut -d' ' -f1`
+		# act only if it's a file
+		if [ -f "$src_dir/$file" ]; then
+			local src_file="$src_dir/$file"
+			local src_file_checksum=`$CHECKSUM_TYPE "$src_file" | cut -d' ' -f1`
+			local dst_file="$dst_dir/$file"
+			local dst_file_checksum=`$CHECKSUM_TYPE "$dst_file" | cut -d' ' -f1`
+			local -i src_file_size=`wc -c $src_file | cut -d' ' -f1`
+			local -i dst_file_size=`wc -c $dst_file | cut -d' ' -f1`
 
-		# some logic about collisions and empty files
-		if [ $src_file_size -eq 0 ]; then
-			# if the source file is empty - don't report a collision
-			true
-		elif [ $dst_file_size -eq 0 ] && [ $src_file_size -ne 0 ]; then
-			# in case the destination file is empty and the source file isn't - override it
-			[ "$DEBUG" = yes ] && echo "'$dst_file' is empty, overriding with '$src_file'" 1>&2
-			cp $src_file $dst_file
-		else
-			# any other case - employ some checksums to decide what's best
-			if [ "$src_file_checksum" = "$dst_file_checksum" ]; then
-				[ "$DEBUG" = yes ] && echo "Collision on '$file' is a non issue, checksums are the same" 1>&2
+			# some logic about collisions and empty files
+			if [ $src_file_size -eq 0 ]; then
+				# if the source file is empty - don't report a collision
+				true
+			elif [ $dst_file_size -eq 0 ] && [ $src_file_size -ne 0 ]; then
+				# in case the destination file is empty and the source file isn't - override it
+				[ "$DEBUG" = yes ] && echo "'$dst_file' is empty, overriding with '$src_file'" 1>&2
+				cp $src_file $dst_file
 			else
-				[ "$DEBUG" = yes ] && echo "Collision on '$file', moving to inspection directory" 1>&2
-				copy_collision_file $src_dir $inspect_dir $file $src_file_checksum
-				copy_collision_file $dst_dir $inspect_dir $file $dst_file_checksum
+				# any other case - employ some checksums to decide what's best
+				if [ "$src_file_checksum" = "$dst_file_checksum" ]; then
+					[ "$DEBUG" = yes ] && echo "Collision on '$file' is a non issue, checksums are the same" 1>&2
+				else
+					[ "$DEBUG" = yes ] && echo "Collision on '$file', moving to inspection directory" 1>&2
+					copy_collision_file $src_dir $inspect_dir $file $src_file_checksum
+					copy_collision_file $dst_dir $inspect_dir $file $dst_file_checksum
+				fi
 			fi
 		fi
 	done
