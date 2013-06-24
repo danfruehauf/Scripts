@@ -1,18 +1,34 @@
 #!/bin/bash
 
-# Written by Dan Fruehauf <dan.fruehauf@utas.edu.au>
+#
+# ninja-merge.sh - a rsync wrapper which handles duplicate files better
+# Copyright (C) 2013 Dan Fruehauf <malkoadan@gmail.com>
+# Copyright (C) 2013 IMOS <imos.org.au>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
 
-# ninja merge is a script for IMOS, managing duplicate files coming
-# from IRODS.
+# ninja merge was initially written for IMOS, handling files big amounts of
+# potentially duplicate files coming from numerous sources.
+#
 # the operation of the script is as follows:
 # * have a source directory - src_dir
 # * have a destination directory - dst_dir
 # * rsync -avv --ignore-existing src_dir dst_dir
 #   * get the output of rsync 
 #   * iterate on every file which 'exists' on both ends
-#   * md5 the file and the destination
-#   * if the checksum is equal - ignore it
-#   * if the checksum is different - copy to the inspection dir
+#   * if the source file is not empty, use the following logic:
+#     * md5 the file and the destination
+#     * if the checksum is equal - ignore it
+#     * if the checksum is different - copy to the inspection dir
 #
 # data migration ninja assumes that md5 hashing is "good enough" for the data
 # sets we'll be facing.
