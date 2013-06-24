@@ -6,8 +6,8 @@
 # from IRODS.
 # the operation of the script is as follows:
 # * have a source directory - src_dir
-# * have a destination directory - dest_dir
-# * rsync -avv --ignore-existing src_dir dest_dir
+# * have a destination directory - dst_dir
+# * rsync -avv --ignore-existing src_dir dst_dir
 #   * get the output of rsync 
 #   * iterate on every file which 'exists' on both ends
 #   * md5 the file and the destination
@@ -55,9 +55,9 @@ run_tests() {
 	echo "Running tests with source directory: '$src_dir_tmp'" 1>&2
 
 	# dest dir
-	local dest_dir_tmp=`mktemp -d -u`
-	cp -a "$src_dir" $dest_dir_tmp
-	echo "Running tests with destination directory: '$dest_dir_tmp'" 1>&2
+	local dst_dir_tmp=`mktemp -d -u`
+	cp -a "$src_dir" $dst_dir_tmp
+	echo "Running tests with destination directory: '$dst_dir_tmp'" 1>&2
 
 	# inspection dir
 	local inspect_dir_tmp=`mktemp -d`
@@ -70,12 +70,12 @@ run_tests() {
 	# inject a file in the destination directory, and one which differs in
 	# contents in the source directory - a file which will be neede to
 	# be INSPECTED
-	echo "I HAVE TO BE INSPECTED" > "$dest_dir_tmp/INSPECT ME PLEASE"
+	echo "I HAVE TO BE INSPECTED" > "$dst_dir_tmp/INSPECT ME PLEASE"
 	echo "I HAVE TO BE INSPECTED BECAUSE I HAVE DIFFERENT CONTENTS" > \
 		"$src_dir_tmp/INSPECT ME PLEASE"
 
 	# remove old indexes if they exist in test directories
-	rm -f $dest_db $src_db
+	rm -f $dst_db $src_db
 
 	# tests pretty much begin here
 	local -i retval=0
@@ -86,7 +86,7 @@ run_tests() {
 	##############################
 	# TEST #1: merge directories #
 	##############################
-	merge_directories $src_dir_tmp $dest_dir_tmp $inspect_dir_tmp
+	merge_directories $src_dir_tmp $dst_dir_tmp $inspect_dir_tmp
 	local retval=$?; test_message $retval yes "Merge directories"
 
 	#########################################
@@ -102,9 +102,10 @@ run_tests() {
 	# TEST #3: second collision #
 	#############################
 	# test collision on collision
+	# if you see a warning here while running, it's all good!
 	echo "I HAVE TO BE INSPECTED BECAUSE I HAVE DIFFERENT CONTENTS OK???" > \
 		"$src_dir_tmp/INSPECT ME PLEASE"
-	merge_directories $src_dir_tmp $dest_dir_tmp $inspect_dir_tmp
+	merge_directories $src_dir_tmp $dst_dir_tmp $inspect_dir_tmp
 	local inspect_file_checksum=`md5sum "$src_dir_tmp/INSPECT ME PLEASE" | cut -d' ' -f1`
 	! test -f "$inspect_dir_tmp/INSPECT ME PLEASE.$inspect_file_checksum" && retval=1
 	test_message $retval no "Files to be inspected ^ 2"
@@ -118,10 +119,10 @@ run_tests() {
 	echo "1234" > \
 		"$src_dir_tmp/INSPECT SAME SIZE"
 	echo "4567" > \
-		"$dest_dir_tmp/INSPECT SAME SIZE"
+		"$dst_dir_tmp/INSPECT SAME SIZE"
 	local src_inspect_file_checksum=`md5sum "$src_dir_tmp/INSPECT SAME SIZE" | cut -d' ' -f1`
-	local dst_inspect_file_checksum=`md5sum "$dest_dir_tmp/INSPECT SAME SIZE" | cut -d' ' -f1`
-	merge_directories $src_dir_tmp $dest_dir_tmp $inspect_dir_tmp
+	local dst_inspect_file_checksum=`md5sum "$dst_dir_tmp/INSPECT SAME SIZE" | cut -d' ' -f1`
+	merge_directories $src_dir_tmp $dst_dir_tmp $inspect_dir_tmp
 	! test -f "$inspect_dir_tmp/INSPECT SAME SIZE.$src_inspect_file_checksum" && retval=1
 	test_message $retval no "Files to be inspected ^ 3"
 	rm -f "$src_dir_tmp/INSPECT SAME SIZE"
@@ -132,7 +133,7 @@ run_tests() {
 	######################################
 	# files to be copied
 	retval=0
-	! test -f "$dest_dir_tmp/COPY ME PLEASE" && retval=1
+	! test -f "$dst_dir_tmp/COPY ME PLEASE" && retval=1
 	test_message $retval no "Files to be copied"
 
 	#############################
@@ -140,12 +141,22 @@ run_tests() {
 	#############################
 	retval=0
 	echo "I HAVE BEEN INJECTED AND I NEED TO BE COPIED" > "$src_dir_tmp/COPY ME PLEASE AFTER UPDATE"
-	merge_directories $src_dir_tmp $dest_dir_tmp $inspect_dir_tmp
-	! test -f "$dest_dir_tmp/COPY ME PLEASE AFTER UPDATE" && retval=1
+	merge_directories $src_dir_tmp $dst_dir_tmp $inspect_dir_tmp
+	! test -f "$dst_dir_tmp/COPY ME PLEASE AFTER UPDATE" && retval=1
 	test_message $retval yes "Update directory"
 
+	################################
+	# TEST #7: override empty file #
+	################################
+	retval=0
+	echo "I HAVE CONTENTS" > "$src_dir_tmp/EMPTY FILE COLLISION"
+	touch "$dst_dir_tmp/EMPTY FILE COLLISION"
+	merge_directories $src_dir_tmp $dst_dir_tmp $inspect_dir_tmp
+	[ `wc -c "$dst_dir_tmp/EMPTY FILE COLLISION" | cut -d' ' -f1` -eq 0 ] && reval=1
+	test_message $retval yes "Empty file collision"
+
 	# cleanup!
-	rm -rf --preserve-root "$src_dir_tmp" "$dest_dir_tmp" "$inspect_dir_tmp"
+	rm -rf --preserve-root "$src_dir_tmp" "$dst_dir_tmp" "$inspect_dir_tmp"
 	exit $retval
 }
 
@@ -208,12 +219,26 @@ merge_directories() {
 		local src_file_checksum=`$CHECKSUM_TYPE "$src_file" | cut -d' ' -f1`
 		local dst_file="$dst_dir/$file"
 		local dst_file_checksum=`$CHECKSUM_TYPE "$dst_file" | cut -d' ' -f1`
-		if [ "$src_file_checksum" = "$dst_file_checksum" ]; then
-			[ "$DEBUG" = yes ] && echo "Collision on '$file' is a non issue, checksums are the same" 1>&2
+		local -i src_file_size=`wc -c $src_file | cut -d' ' -f1`
+		local -i dst_file_size=`wc -c $dst_file | cut -d' ' -f1`
+
+		# some logic about collisions and empty files
+		if [ $src_file_size -eq 0 ]; then
+			# if the source file is empty - don't report a collision
+			true
+		elif [ $dst_file_size -eq 0 ] && [ $src_file_size -ne 0 ]; then
+			# in case the destination file is empty and the source file isn't - override it
+			[ "$DEBUG" = yes ] && echo "'$dst_file' is empty, overriding with '$src_file'" 1>&2
+			cp $src_file $dst_file
 		else
-			[ "$DEBUG" = yes ] && echo "Collision on '$file', moving to inspection directory" 1>&2
-			copy_collision_file $src_dir $inspect_dir $file $src_file_checksum
-			copy_collision_file $dst_dir $inspect_dir $file $dst_file_checksum
+			# any other case - employ some checksums to decide what's best
+			if [ "$src_file_checksum" = "$dst_file_checksum" ]; then
+				[ "$DEBUG" = yes ] && echo "Collision on '$file' is a non issue, checksums are the same" 1>&2
+			else
+				[ "$DEBUG" = yes ] && echo "Collision on '$file', moving to inspection directory" 1>&2
+				copy_collision_file $src_dir $inspect_dir $file $src_file_checksum
+				copy_collision_file $dst_dir $inspect_dir $file $dst_file_checksum
+			fi
 		fi
 	done
 	unset IFS
@@ -280,11 +305,12 @@ main() {
 	done
 
 	# make sure src_dir exists
+	src_dirs=`echo $src_dirs | sed -e 's/^ //g'`
 	[ x"$src_dirs" = x ] && usage
 
 	# test only? needs only src_dir
 	# exits after test
-	[ "$test" = "yes" ] && run_tests "$src_dir"
+	[ "$test" = "yes" ] && run_tests "$src_dirs"
 
 	# make sure dst_dir exists
 	[ x"$dst_dir" = x ] && usage
