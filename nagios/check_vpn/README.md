@@ -24,6 +24,31 @@ check_vpn features the following:
  * Does not interfere with current network communications of machine (using source based routing per connected device)
  * Plugin architecture allows addition of more VPN plugins easily
 
+## Installation
+ * Copy "check_vpn" content to (Nagios plugins folder): /usr/lib64/nagios/plugins
+   You should end up with check_vpn script copied directly to plugins folder and check_vpn_plugins inside plugins
+ * Edit suders file with visudo and make sure you have the next changes:
+   * Comment the next two parameters: 
+     #Defaults    requiretty
+     #Defaults   !visiblepw
+
+   * Add this line (make sure the path is correct):
+     nagios  ALL=(ALL)   NOPASSWD:/usr/lib64/nagios/plugins/check_vpn
+
+  * Define a new command inside command-plugins.cfg:
+    # Check VPN
+    command[check_vpn]=/usr/lib64/nagios/plugins/check_vpn -l -t $ARG$1 -H $ARG$2 -u $ARG$3 -p $ARG$4 -- $ARG$5
+
+  * Define the command inside commands.cfg:
+    # check vpn
+    define command{
+      command_name    check_vpn
+      command_line    /usr/bin/sudo $USER1$/check_vpn -l -t $ARG1$ -H $ARG2$ -u $ARG3$ -p $ARG4$ -- $ARG$5
+    }
+
+  * Use the command like so:
+    check_command  check_vpn!pptp!<hostname_or_ip>!<user>!<password>!require-mppe
+
 ## Simple Usage
 
 	./check_vpn -t VPN_TYPE -H REMOTE_HOST -u USERNAME -p PASSWORD -- EXTRA_ARGS
