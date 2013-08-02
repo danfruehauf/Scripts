@@ -205,7 +205,13 @@ merge_directories() {
 	local dst_dir=$1; shift
 	local inspect_dir=$1; shift
 	local tmp_rsync_output=`mktemp`
-	rsync -avv --ignore-existing $src_dir/ $dst_dir/ 2>&1 | tee $tmp_rsync_output
+	if [ "$DEBUG" = yes ]; then
+		# show rsync output if in DEBUG mode
+		rsync -avv --ignore-existing $src_dir/ $dst_dir/ 2>&1 | tee $tmp_rsync_output
+	else
+		rsync -avv --ignore-existing $src_dir/ $dst_dir/ >& $tmp_rsync_output
+	fi
+
 	# iterate on all entries which existed on dstination
 
 	# get all collisions
