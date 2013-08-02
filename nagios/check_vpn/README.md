@@ -24,6 +24,46 @@ check_vpn features the following:
  * Does not interfere with current network communications of machine (using source based routing per connected device)
  * Plugin architecture allows addition of more VPN plugins easily
 
+## Installation
+ Installation process would be similar to the next steps for RHEL / CentOS / Debian distros.
+ * Copy "check_vpn" content to: `/usr/lib64/nagios/plugins`  (check your distro where is the nagios `plugins` folder).
+   You should end up with something similar to this:
+   <pre>
+   plugins/
+   ├── check_vpn
+   ├── check_vpn_plugins
+   │   ├── l2tp.sh
+   │   ├── openvpn.sh
+   │   ├── pptp.sh
+   │   └── ssh.sh
+   ...
+   </pre>
+
+ * Edit sudoers file with `visudo` and make sure you have the next changes:
+   * Comment the next two parameters: 
+     <pre>#Defaults    requiretty
+     #Defaults   !visiblepw</pre>
+
+   * Add the next line (make sure the user and path are both correct for your installation):
+     <pre>nagios  ALL=(ALL)   NOPASSWD:/usr/lib64/nagios/plugins/check_vpn</pre>
+
+ * Define the command inside `commands.cfg`:
+   <pre># check vpn
+   define command{
+     command_name    check_vpn
+     command_line    /usr/bin/sudo $USER1$/check_vpn -l -t $ARG1$ -H $ARG2$ -u $ARG3$ -p $ARG4$ -- $ARG$5
+   }</pre>
+
+ * Use the command like so:
+   <pre>define service{
+     use                        generic-service
+     host_name                  your_vpn_server
+     service_description        PPTP VPN connection
+     <strong>check_command              check_vpn!pptp!hostname_or_ip!user!password!require-mppe</strong>
+     contact_groups             your_contact_group
+    }</pre>
+
+
 ## Simple Usage
 
 	./check_vpn -t VPN_TYPE -H REMOTE_HOST -u USERNAME -p PASSWORD -- EXTRA_ARGS
