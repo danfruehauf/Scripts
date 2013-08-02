@@ -44,10 +44,10 @@ check_vpn features the following:
      <pre>#Defaults    requiretty
      #Defaults   !visiblepw</pre>
 
-   * Add this line (make sure the path is correct):
+   * Add the next line (make sure the user and path are both correct for your installation):
      <pre>nagios  ALL=(ALL)   NOPASSWD:/usr/lib64/nagios/plugins/check_vpn</pre>
 
- * Define the command inside commands.cfg:
+ * Define the command inside `commands.cfg`:
    <pre># check vpn
    define command{
      command_name    check_vpn
