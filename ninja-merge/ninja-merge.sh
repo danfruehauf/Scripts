@@ -205,7 +205,13 @@ merge_directories() {
 	local dst_dir=$1; shift
 	local inspect_dir=$1; shift
 	local tmp_rsync_output=`mktemp`
-	rsync -avv --ignore-existing $src_dir/ $dst_dir/ >& $tmp_rsync_output
+	if [ "$DEBUG" = yes ]; then
+		# show rsync output if in DEBUG mode
+		rsync -avv --ignore-existing $src_dir/ $dst_dir/ 2>&1 | tee $tmp_rsync_output
+	else
+		rsync -avv --ignore-existing $src_dir/ $dst_dir/ >& $tmp_rsync_output
+	fi
+
 	# iterate on all entries which existed on dstination
 
 	# get all collisions
@@ -277,6 +283,34 @@ sort_directories_by_size() {
 	rm -f $tmp_output
 }
 
+# sends an email, after execution
+# $1 - email address
+# $2 - destination merge
+# $3 - inspection directory
+# "$@" - source directories
+send_email() {
+	local email_address=$1; shift
+	local dst_dir=$1; shift
+	local inspect_dir=$1; shift
+
+	local tmp_email_content=`mktemp`
+	echo "Source directories:" >> $tmp_email_content
+	for src_dir in "$@"; do
+		echo "$src_dir" >> $tmp_email_content
+	done
+	echo "" >> $tmp_email_content
+
+	echo "Destination directory:" >> $tmp_email_content
+	echo "$dst_dir" >> $tmp_email_content
+	echo "" >> $tmp_email_content
+
+	echo "Collision directory:" >> $tmp_email_content
+	echo "$inspect_dir" >> $tmp_email_content
+
+	cat $tmp_email_content | mail -s "Ninja merge completed" $mail
+	rm -f $tmp_email_content
+}
+
 # prints usage
 usage() {
 	echo "Usage: $0 [OPTIONS]... -s SOURCE_DIR -d DEST_DIR"
@@ -292,6 +326,7 @@ Options:
   -o, --sort                 Sort source directories by size before copying.
   -t, --test                 Run test suite. Still needs source and destination
                              directories, but doesn't modify them.
+  -m, --mail                 Send email to this address after execution.
   -v, --verbose              Print more debug messages."
 	exit 2
 }
@@ -300,11 +335,11 @@ Options:
 # arguments will be parsed with getopt, see usage()
 main() {
 	# parse options with getopt
-	local tmp_getops=`getopt -o hs:d:i:otv --long help,source:,destination:,sort,test,verbose -- "$@"`
+	local tmp_getops=`getopt -o hs:d:i:otm:v --long help,source:,destination:,sort,test,mail:,verbose -- "$@"`
 	[ $? != 0 ] && usage
 
 	eval set -- "$tmp_getops"
-	local src_dirs dst_dir inspect_dir
+	local src_dirs dst_dir inspect_dir mail
 	local test=no
 	local sort=no
 
@@ -317,6 +352,7 @@ main() {
 			-i|--inspection) inspect_dir="$2"; shift 2;;
 			-o|--sort) sort="yes"; shift 1;;
 			-t|--test) test="yes"; shift 1;;
+			-m|--mail) mail="$2"; shift 2;;
 			-v|--verbose) DEBUG="yes"; shift 1;;
 			--) shift; break;;
 			*) usage;;
@@ -351,6 +387,11 @@ main() {
 		echo "Merging '$src_dir' >> '$dst_dir'" 1>&2
 		merge_directories $src_dir $dst_dir $inspect_dir
 	done
+
+	# send email?
+	if [ x"$mail" != x ]; then
+		send_email $mail $dst_dir $inspect_dir $src_dirs
+	fi
 }
 
 main "$@"

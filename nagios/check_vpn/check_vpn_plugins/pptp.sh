@@ -56,7 +56,7 @@ _pptp_start_vpn() {
 	local device=$1; shift
 	local -i device_nr=`echo $device | sed -e "s/^$PPTP_DEVICE_PREFIX//"`
 
-	if ! which pptp >& /dev/nulll; then
+	if ! which pptp >& /dev/null; then
 		ERROR_STRING="Error: pptp not installed"
 		return 1
 	fi
