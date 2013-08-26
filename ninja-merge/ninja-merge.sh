@@ -121,9 +121,8 @@ merge_directories() {
 		# act only if it's a file
 		if [ -f "$src_dir/$file" ]; then
 			local src_file="$src_dir/$file"
-			local src_file_checksum=`$CHECKSUM_TYPE "$src_file" | cut -d' ' -f1`
 			local dst_file="$dst_dir/$file"
-			local dst_file_checksum=`$CHECKSUM_TYPE "$dst_file" | cut -d' ' -f1`
+
 			local -i src_file_size=`wc -c $src_file | cut -d' ' -f1`
 			local -i dst_file_size=`wc -c $dst_file | cut -d' ' -f1`
 
@@ -137,6 +136,10 @@ merge_directories() {
 				cp $src_file $dst_file
 			else
 				# any other case - employ some checksums to decide what's best
+				# please note we're running checksums ONLY when needed as they can be
+				# rather slow
+				local src_file_checksum=`$CHECKSUM_TYPE "$src_file" | cut -d' ' -f1`
+				local dst_file_checksum=`$CHECKSUM_TYPE "$dst_file" | cut -d' ' -f1`
 				if [ "$src_file_checksum" = "$dst_file_checksum" ]; then
 					[ "$DEBUG" = yes ] && echo "Collision on '$file' is a non issue, checksums are the same" 1>&2
 				else
