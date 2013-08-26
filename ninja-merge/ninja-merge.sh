@@ -64,16 +64,33 @@ copy_collision_file() {
 # $1 - src_dir
 # $2 - dst_dir
 # $3 - inspect_dir
+# $4 - rsync output (optional)
 merge_directories() {
 	local src_dir=$1; shift
 	local dst_dir=$1; shift
 	local inspect_dir=$1; shift
-	local tmp_rsync_output=`mktemp`
-	if [ "$DEBUG" = yes ]; then
-		# show rsync output if in DEBUG mode
-		rsync -avv --ignore-existing $src_dir/ $dst_dir/ 2>&1 | tee $tmp_rsync_output
+
+	local tmp_rsync_output
+	if [ x"$1" != x ]; then
+		# support resuming ninja, if an rsync output file was supplied
+		tmp_rsync_output="$1"; shift
+		if [ ! -f "$tmp_rsync_output" ]; then
+			echo "FATAL: Resume file '$tmp_rsync_output' does not exist"
+			return 1
+		fi
+		echo "INFO: Resuming with file '$tmp_rsync_output'"
 	else
-		rsync -avv --ignore-existing $src_dir/ $dst_dir/ >& $tmp_rsync_output
+		# no resume file supplied? no worries, we will invoke rsync...
+		tmp_rsync_output=`mktemp`
+		if [ "$DEBUG" = yes ]; then
+			# show rsync output if in DEBUG mode
+			rsync -avv --ignore-existing $src_dir/ $dst_dir/ 2>&1 | tee $tmp_rsync_output
+		else
+			rsync -avv --ignore-existing $src_dir/ $dst_dir/ >& $tmp_rsync_output
+			local ninje_command_line=`sed -e 's/\x0/ /g' /proc/$$/cmdline`
+			echo "INFO: Resume file is '$tmp_rsync_output'"
+			echo "INFO: To resume, run '$ninje_command_line -r $tmp_rsync_output'"
+		fi
 	fi
 
 	# iterate on all entries which existed on dstination
@@ -187,6 +204,8 @@ Options:
   -d, --destination          Destination directory.
   -i, --inspection           Inspection directory - all rejects will end up
                              here.
+  -r, --resume               Resume ninja merge after it stopped, using the
+                             provided rsync output file.
   -o, --sort                 Sort source directories by size before copying.
   -m, --mail                 Send email to this address after execution.
   -v, --verbose              Print more debug messages."
@@ -197,11 +216,11 @@ Options:
 # arguments will be parsed with getopt, see usage()
 main() {
 	# parse options with getopt
-	local tmp_getops=`getopt -o hs:d:i:om:v --long help,source:,destination:,sort,mail:,verbose -- "$@"`
+	local tmp_getops=`getopt -o hs:d:i:r:om:v --long help,source:,destination:,inspection:,resume:,sort,mail:,verbose -- "$@"`
 	[ $? != 0 ] && usage
 
 	eval set -- "$tmp_getops"
-	local src_dirs dst_dir inspect_dir mail
+	local src_dirs dst_dir inspect_dir mail resume_file
 	local sort=no
 
 	# parse the options
@@ -211,6 +230,7 @@ main() {
 			-s|--source) src_dirs="$src_dirs $2"; shift 2;;
 			-d|--destination) dst_dir="$2"; shift 2;;
 			-i|--inspection) inspect_dir="$2"; shift 2;;
+			-r|--resume) resume_file="$2"; shift 2;;
 			-o|--sort) sort="yes"; shift 1;;
 			-m|--mail) mail="$2"; shift 2;;
 			-v|--verbose) DEBUG="yes"; shift 1;;
@@ -241,7 +261,7 @@ main() {
 	for src_dir in $src_dirs; do
 		[ ! -d "$src_dir" ] && echo "Supplied source directory does not exist: '$src_dir'" && usage
 		echo "Merging '$src_dir' >> '$dst_dir'" 1>&2
-		merge_directories $src_dir $dst_dir $inspect_dir
+		merge_directories $src_dir $dst_dir $inspect_dir $resume_file
 	done
 
 	# send email?

@@ -141,6 +141,30 @@ test_override_empty_file_in_destination() {
 		"[ "$src_file_checksum" = "$dst_file_checksum" ]"
 }
 
+# inject a file to be inspected in a resume
+test_files_to_be_inspected_on_resume() {
+	# inject file in destination directory
+	echo "I HAVE TO BE INSPECTED" > "$DEST_DIR/INSPECT ME PLEASE"
+
+	# inject file with same name in source directory
+	echo "I HAVE TO BE INSPECTED BECAUSE I HAVE DIFFERENT CONTENTS" > \
+		"$SOURCE_DIR/INSPECT ME PLEASE"
+	local inspect_file_checksum=`md5sum "$SOURCE_DIR/INSPECT ME PLEASE" | cut -d' ' -f1`
+
+	local resume_file=`mktemp`
+	rsync -avv --ignore-existing $SOURCE_DIR/ $DEST_DIR/ >& $resume_file
+
+	$NINJA_MERGE_EXEC -s $SOURCE_DIR -d $DEST_DIR -i $INSPECT_DIR -r $resume_file >& /dev/null
+
+	assertTrue 'source file to be inspected exists in inspection directory' \
+		"[ -f \"$INSPECT_DIR/INSPECT ME PLEASE.$inspect_file_checksum\" ]"
+
+	local inspect_file_checksum=`md5sum "$DEST_DIR/INSPECT ME PLEASE" | cut -d' ' -f1`
+	assertTrue 'destination file to be inspected exists in inspection directory' \
+		"[ -f \"$INSPECT_DIR/INSPECT ME PLEASE.$inspect_file_checksum\" ]"
+
+	rm -f $resume_file
+}
 
 ##################
 # SETUP/TEARDOWN #
