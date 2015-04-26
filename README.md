@@ -1,7 +1,7 @@
-My little humble repository.
+# Scripts Repository
 
-Github is great, and after discovering it I'll upload here some of my tiny
-projects for everybody to enjoy :)
+Little utilities which do not deserve their own repository. I try to keep them
+in a sane state. They can and should be reused.
 
 Currently in:
  * snapshot_backup - My reliable script for creating a nice snapshot backup
