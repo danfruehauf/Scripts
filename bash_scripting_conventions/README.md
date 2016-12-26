@@ -1,17 +1,17 @@
 ## Bash Scripting Conventions
 
-Scripting conventions are needed, especially with Bash, as things can get rather wild if not.
-Follow them, they try to avoid havoc and chaos.
+Scripting conventions are needed, especially with Bash, as things can get rather
+wild if not. Follow them, they try to avoid havoc and chaos.
 
 ### General
 
- * Include a #!/bin/bash header as the first line of your file.
+ * Include a #!/bin/bash header as the first line of your file:
 ```
 #!/bin/bash
 ```
  * You may have a header written in the style of:
 ```
-# Written by Dan Fruehauf <malkodan@gmail.com>
+# written by Dan Fruehauf <malkodan@gmail.com>
 ```
  * Indent everything with tabs and not with spaces!
    * And if you are indenting with spaces, be consistent with it!
@@ -45,8 +45,9 @@ GLOBAL_VARIABLE="some text"
 ```
 local variable_inside_function="some text"
 ```
- * Use `declare -r` or `local -r` to declare read only variables.
- * Use `declare -i` or `local -i` to declare integer variables, it is a lot safer.
+ * Use `declare -r` or `local -r` to declare read only variables
+   * Alternatively use `readonly` to declare a read only variable
+ * Use `declare -i` or `local -i` to declare integer variables, it is a lot safer
 ```
 # global read variable
 declare -r READ_ONLY_VARIABLE=example
@@ -73,7 +74,7 @@ main() {
 
 main "$@"
 ```
- * DO NOT write any code not in a function (except for the call to `main()` of course)
+ * **DO NOT** write any code *not* in a function (except for the call to `main()` of course)
  * Use function headers to describe it's parameters and use `shift` to retrieve variables. Avoid using `$1`, `$2` etc, unless the function is really small, then the use of "$@" is allowed.
 ```
 # $1 - user name
@@ -176,6 +177,13 @@ _hello_world_impl() {
 source /etc/bashrc
 ```
 
+### Comments
+Use comments where applicable. Do not capitalize comments - this will make it easier to *grep* for things if necessary:
+```
+# This is a capitalized comment - avoid
+# this is an OK comment :)
+```
+
 ### Usability
 
  * In case a script was misused, create a `usage()` function and have it's output go to stderr instead of stdout. This can be achieved by:
@@ -186,7 +194,7 @@ usage() {
 	exit 2
 }
 ```
- * always parse options with `getopts`. It is safer and friendlier for the user. Here is a snippet for getopts:
+ * Always parse options with `getopts`. It is safer and friendlier for the user. Here is a snippet for getopts:
 ```
 # main
 main() {
@@ -214,11 +222,11 @@ main() {
 	[ x"$option_a" = x ] && usage
 }
 ```
- * In case there's required user intervention, you MAY create a neat dialog using dialog, DON'T BE LAZY if you want people to use your scripts:
+ * In case there's required user intervention, you MAY create a neat dialog using `dialog`, DON'T BE LAZY if you want people to use your scripts:
 ```
 if dialog --yesno "Are you sure you want to wipe out your whole hard drive?" 0 0; then
 	echo "OMG, FAIL."; exit 2
 else
-	echo "Good choice mate."
+	echo "Good choice, mate."
 fi
 ```
