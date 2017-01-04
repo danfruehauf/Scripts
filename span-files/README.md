@@ -38,7 +38,7 @@ destination device.
 
 ## Simple Usage
 
-Sppol `/data` on `/mnt/1`, `/mnt/2` and `/mnt/3`:
+Spool `/data` on `/mnt/1`, `/mnt/2` and `/mnt/3`:
 ```
 $ ./span-files -o all -t data -s /data -d /mnt/1 -d /mnt/2 -d /mnt/3
 ```

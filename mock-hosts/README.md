@@ -1,6 +1,6 @@
 # mock-hosts.sh
 
-A few simple functions to mock entries in `/etc/hosts` main for the purpose of
+A few simple functions to mock entries in `/etc/hosts` mainly for the purpose of
 testing.
 
 ***BACKUP YOUR /etc/hosts*** - I take no responsibility for any data loss.
