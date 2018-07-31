@@ -52,7 +52,7 @@ You can also run `span-files.sh` step by step:
 ```
 $ ./span-files -o index -t data -s /data -d /mnt/1 -d /mnt/2 -d /mnt/3
 $ ./span-files -o span -t data -s /data -d /mnt/1 -d /mnt/2 -d /mnt/3
-$ ./span-files -o cp -t data -s /data -d /mnt/1 -d /mnt/2 -d /mnt/3
+$ ./span-files -o copy -t data -s /data -d /mnt/1 -d /mnt/2 -d /mnt/3
 ```
 
 `span-files.sh` keeps state in a temporary directory, in this case - `data`.
